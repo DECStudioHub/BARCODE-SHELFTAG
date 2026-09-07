@@ -38,14 +38,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'validate', label: '2. Validate & Edit', number: 2, icon: CheckCircle2 },
     { id: 'configure', label: '3. Configure Layout', number: 3, icon: Sliders },
     { id: 'preview', label: '4. Preview & Print', number: 4, icon: Printer },
-    { id: 'settings', label: '5. Settings', number: 5, icon: Settings },
   ];
 
   const getStepStatus = (stepId: AppStep) => {
-    if (stepId === 'settings') {
-      return currentStep === 'settings' ? 'current' : 'accessible';
-    }
-
     const stepOrder: AppStep[] = ['import', 'validate', 'configure', 'preview'];
     const currentIdx = stepOrder.indexOf(currentStep);
     const targetIdx = stepOrder.indexOf(stepId);
