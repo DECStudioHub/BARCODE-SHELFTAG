@@ -1,0 +1,327 @@
+import React, { useState, useRef } from 'react';
+import { UploadCloud, FileSpreadsheet, Download, Sparkles, AlertCircle, Building2, Calendar, User, FileText } from 'lucide-react';
+import { InventoryItem, InventorySession, ValidationSummary } from '../types';
+import { parseExcelFile, downloadSampleExcelTemplate, SAMPLE_DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
+
+interface Step1ImportProps {
+  onDataLoaded: (items: InventoryItem[], summary: ValidationSummary, filename: string) => void;
+  session: InventorySession;
+  onUpdateSession: (session: InventorySession) => void;
+}
+
+export const Step1Import: React.FC<Step1ImportProps> = ({
+  onDataLoaded,
+  session,
+  onUpdateSession,
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const processFile = async (file: File) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    const validExtensions = ['.xlsx', '.xls', '.csv'];
+    const hasValidExt = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+    if (!hasValidExt) {
+      setErrorMessage('Please upload a valid Excel or CSV file (.xlsx, .xls, .csv).');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const result = parseExcelFile(buffer);
+
+      if (result.items.length === 0) {
+        setErrorMessage('No inventory items found in the file. Please check that rows exist.');
+        setIsLoading(false);
+        return;
+      }
+
+      onDataLoaded(result.items, result.summary, file.name);
+    } catch (err: any) {
+      console.error('Error reading Excel file:', err);
+      setErrorMessage(err.message || 'Failed to read Excel file. Please ensure it is not corrupted.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFile(e.target.files[0]);
+    }
+  };
+
+  const handleLoadDemo = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      const summary = revalidateItems(SAMPLE_DEMO_ITEMS);
+      onDataLoaded(SAMPLE_DEMO_ITEMS, summary, 'Sample_Inventory_Demo.xlsx');
+      setIsLoading(false);
+    }, 250);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Hero Welcome banner */}
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-xs p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-100 pb-5 mb-6">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+              STEP 1 — IMPORT EXCEL FILE
+            </span>
+            <h1 className="text-2xl font-black tracking-tight text-zinc-900 mt-2">
+              Inventory Shelf Tag & Counting System
+            </h1>
+            <p className="text-sm text-zinc-600 mt-1 max-w-xl">
+              Upload your inventory spreadsheet to automatically validate items, generate scannable barcode shelf tags, and print physical count verification sheets.
+            </p>
+          </div>
+          <div className="flex flex-wrap sm:flex-col gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={downloadSampleExcelTemplate}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 border border-zinc-300 rounded-lg transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-zinc-600" />
+              Download Template (.xlsx)
+            </button>
+            <button
+              type="button"
+              onClick={handleLoadDemo}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors cursor-pointer shadow-xs"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              Load Demo Data (12 Items)
+            </button>
+          </div>
+        </div>
+
+        {/* Error Alert */}
+        {errorMessage && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-red-800">
+            <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-bold">Import Error</p>
+              <p className="mt-0.5 text-red-700">{errorMessage}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Drag and drop zone */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-8 sm:p-12 text-center cursor-pointer transition-all ${
+            isDragging
+              ? 'border-emerald-500 bg-emerald-50/50 scale-[0.99]'
+              : 'border-zinc-300 hover:border-zinc-400 bg-zinc-50/70 hover:bg-zinc-50'
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx, .xls, .csv"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100/80 text-emerald-700 flex items-center justify-center mb-4 shadow-xs">
+            {isLoading ? (
+              <div className="w-7 h-7 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <UploadCloud className="w-8 h-8" />
+            )}
+          </div>
+
+          <h3 className="text-lg font-bold text-zinc-900">
+            {isLoading ? 'Processing Excel Data...' : 'Choose Excel File or Drag & Drop Here'}
+          </h3>
+          <p className="text-sm text-zinc-500 mt-1">
+            Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv) spreadsheets
+          </p>
+
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              disabled={isLoading}
+              className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer"
+            >
+              Choose Excel File
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Inventory Session Configuration Card */}
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-xs p-6">
+        <div className="flex items-center gap-2 mb-4 border-b border-zinc-100 pb-3">
+          <Building2 className="w-5 h-5 text-emerald-700" />
+          <div>
+            <h3 className="text-base font-bold text-zinc-900">Inventory Session Details</h3>
+            <p className="text-xs text-zinc-500">Optional store and session header metadata printed on the tags</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-1">
+              Branch Name
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="e.g. Metro Manila Hub"
+                value={session.branch}
+                onChange={(e) => onUpdateSession({ ...session, branch: e.target.value })}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-zinc-50/50"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-1">
+              Store / Warehouse ID
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="e.g. Store #104 - Main"
+                value={session.store}
+                onChange={(e) => onUpdateSession({ ...session, store: e.target.value })}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-zinc-50/50"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+              Inventory Date
+            </label>
+            <input
+              type="date"
+              value={session.inventoryDate}
+              onChange={(e) => onUpdateSession({ ...session, inventoryDate: e.target.value })}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-zinc-50/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+              <User className="w-3.5 h-3.5 text-zinc-500" />
+              Prepared By
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Auditor / Lead"
+              value={session.preparedBy}
+              onChange={(e) => onUpdateSession({ ...session, preparedBy: e.target.value })}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-zinc-50/50"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Recommended Columns Reference Table */}
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-xs p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <FileSpreadsheet className="w-5 h-5 text-zinc-600" />
+          <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wide">
+            Recommended Excel File Format & Columns
+          </h3>
+        </div>
+        <p className="text-xs text-zinc-500 mb-4">
+          The parser automatically detects standard and alias column names (case-insensitive):
+        </p>
+
+        <div className="overflow-x-auto border border-zinc-200 rounded-lg">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-zinc-100 text-zinc-700 border-b border-zinc-200 font-bold">
+              <tr>
+                <th className="px-3 py-2">Column</th>
+                <th className="px-3 py-2">Purpose</th>
+                <th className="px-3 py-2">Accepted Aliases</th>
+                <th className="px-3 py-2">Example Value</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 text-zinc-700">
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">LOCATOR</td>
+                <td className="px-3 py-2">Location / shelf / rack identifier</td>
+                <td className="px-3 py-2 text-zinc-500">Location, Shelf, Rack, Bin, Loc</td>
+                <td className="px-3 py-2 font-mono">A01-01</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">SKU</td>
+                <td className="px-3 py-2">Stock Keeping Unit (Unique item code)</td>
+                <td className="px-3 py-2 text-zinc-500">Item Code, Product Code, Part No</td>
+                <td className="px-3 py-2 font-mono">SKU001</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">UPC NO</td>
+                <td className="px-3 py-2">UPC / EAN product code</td>
+                <td className="px-3 py-2 text-zinc-500">UPC, EAN, Barcode No</td>
+                <td className="px-3 py-2 font-mono">123456789012</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">DESCRIPTION</td>
+                <td className="px-3 py-2">Product name or item description</td>
+                <td className="px-3 py-2 text-zinc-500">Desc, Item Name, Title, Product</td>
+                <td className="px-3 py-2">Coca-Cola Classic 1.5L</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">BARCODE</td>
+                <td className="px-3 py-2">Barcode value to be generated (Code 128 / UPC)</td>
+                <td className="px-3 py-2 text-zinc-500">Bar Code, Code</td>
+                <td className="px-3 py-2 font-mono">123456789012</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">COUNT</td>
+                <td className="px-3 py-2">Actual counted quantity (or left blank for physical sheet)</td>
+                <td className="px-3 py-2 text-zinc-500">Qty, Quantity, Actual Count</td>
+                <td className="px-3 py-2 font-mono">25</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">COUNTER</td>
+                <td className="px-3 py-2">Name / ID of person who counted</td>
+                <td className="px-3 py-2 text-zinc-500">Counted By, Counter Name</td>
+                <td className="px-3 py-2">Juan Santos</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">SCANNER</td>
+                <td className="px-3 py-2">Name / ID of person who scanned barcode</td>
+                <td className="px-3 py-2 text-zinc-500">Scanner Name, Scanned By</td>
+                <td className="px-3 py-2">Maria Ramos</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono font-bold text-zinc-900">VALIDATOR</td>
+                <td className="px-3 py-2">Name / ID of validator / auditor</td>
+                <td className="px-3 py-2 text-zinc-500">Validated By, Checker, Auditor</td>
+                <td className="px-3 py-2">Pedro Reyes</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
