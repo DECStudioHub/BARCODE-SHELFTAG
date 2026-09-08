@@ -6,6 +6,7 @@ import { Step3Configure } from './components/Step3Configure';
 import { Step4Preview } from './components/Step4Preview';
 import { SettingsTab } from './components/SettingsTab';
 import { StandalonePrintView } from './components/StandalonePrintView';
+import { CountSheetGenerator } from './components/countSheet/CountSheetGenerator';
 import {
   InventoryItem,
   ValidationSummary,
@@ -13,6 +14,7 @@ import {
   InventorySession,
   AppStep,
   SystemSettings,
+  AppModuleId,
 } from './types';
 import { DEMO_ITEMS, revalidateItems } from './utils/excelParser';
 import {
@@ -20,6 +22,7 @@ import {
   getPaletteTheme,
   applyThemeToDocument,
 } from './utils/theme';
+import { ShelfTagPPModule } from './components/module2/ShelfTagPPModule';
 
 const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   paperSize: 'A4',
@@ -66,6 +69,16 @@ const DEFAULT_SESSION: InventorySession = {
 };
 
 export default function App() {
+  const [activeModule, setActiveModule] = useState<AppModuleId>(() => {
+    try {
+      const saved = localStorage.getItem('inv_active_module');
+      if (saved === 'count_tag' || saved === 'shelftag_pp') {
+        return saved;
+      }
+    } catch {}
+    return 'count_tag';
+  });
+
   const [isPrintMode, setIsPrintMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return window.location.search.includes('mode=print');
@@ -357,6 +370,15 @@ export default function App() {
     setCurrentStep('import');
   };
 
+  const handleSelectModule = (mod: AppModuleId) => {
+    setActiveModule(mod);
+    try {
+      localStorage.setItem('inv_active_module', mod);
+    } catch (e) {
+      console.warn('Failed to save active module:', e);
+    }
+  };
+
   // If in standalone print mode, render clean print view
   if (isPrintMode) {
     return (
@@ -373,6 +395,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-zinc-100/70 text-zinc-900 flex flex-col font-sans print:bg-white print:m-0 print:p-0">
       <Navbar
+        activeModule={activeModule}
+        onSelectModule={handleSelectModule}
         currentStep={currentStep}
         onSelectStep={step => setCurrentStep(step)}
         itemCount={items.length}
@@ -383,45 +407,7 @@ export default function App() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 print:p-0 print:m-0 print:max-w-none print:w-full">
-        {currentStep === 'import' && (
-          <Step1Import
-            onDataLoaded={handleDataLoaded}
-            session={session}
-            onUpdateSession={handleUpdateSession}
-          />
-        )}
-
-        {currentStep === 'validate' && (
-          <Step2Validate
-            items={items}
-            summary={summary}
-            filename={filename}
-            onUpdateItems={handleUpdateItems}
-            onContinue={() => setCurrentStep('configure')}
-            onBackToImport={() => setCurrentStep('import')}
-          />
-        )}
-
-        {currentStep === 'configure' && (
-          <Step3Configure
-            config={config}
-            onUpdateConfig={handleUpdateConfig}
-            selectedItems={items.filter(it => it.isSelected !== false)}
-            onGenerateLayout={() => setCurrentStep('preview')}
-            onBack={() => setCurrentStep('validate')}
-          />
-        )}
-
-        {currentStep === 'preview' && (
-          <Step4Preview
-            items={items}
-            config={config}
-            session={session}
-            onBackToConfig={() => setCurrentStep('configure')}
-          />
-        )}
-
-        {currentStep === 'settings' && (
+        {currentStep === 'settings' ? (
           <SettingsTab
             settings={settings}
             onUpdateSettings={handleUpdateSettings}
@@ -434,6 +420,71 @@ export default function App() {
             onFactoryReset={handleFactoryReset}
             onNavigateToStep={step => setCurrentStep(step)}
           />
+        ) : activeModule === 'shelftag_pp' ? (
+          <ShelfTagPPModule
+            items={items}
+            session={session}
+            onUpdateItems={newItems => {
+              const revalidated = revalidateItems(newItems);
+              handleUpdateItems(newItems, revalidated);
+            }}
+            onLoadSampleData={handleLoadSampleData}
+            onSwitchToImport={() => {
+              setActiveModule('count_tag');
+              setCurrentStep('import');
+            }}
+          />
+        ) : (
+          <>
+            {currentStep === 'import' && (
+              <Step1Import
+                onDataLoaded={handleDataLoaded}
+                session={session}
+                onUpdateSession={handleUpdateSession}
+              />
+            )}
+
+            {currentStep === 'validate' && (
+              <Step2Validate
+                items={items}
+                summary={summary}
+                filename={filename}
+                onUpdateItems={handleUpdateItems}
+                onContinue={() => setCurrentStep('configure')}
+                onGenerateCountSheet={() => setCurrentStep('count_sheet')}
+                onBackToImport={() => setCurrentStep('import')}
+              />
+            )}
+
+            {currentStep === 'configure' && (
+              <Step3Configure
+                config={config}
+                onUpdateConfig={handleUpdateConfig}
+                selectedItems={items.filter(it => it.isSelected !== false)}
+                onGenerateLayout={() => setCurrentStep('preview')}
+                onBack={() => setCurrentStep('validate')}
+              />
+            )}
+
+            {currentStep === 'preview' && (
+              <Step4Preview
+                items={items}
+                config={config}
+                session={session}
+                onBackToConfig={() => setCurrentStep('configure')}
+              />
+            )}
+
+            {currentStep === 'count_sheet' && (
+              <CountSheetGenerator
+                items={items}
+                session={session}
+                settings={settings}
+                onBackToValidate={() => setCurrentStep('validate')}
+                onSwitchToCountTags={() => setCurrentStep('configure')}
+              />
+            )}
+          </>
         )}
       </main>
     </div>

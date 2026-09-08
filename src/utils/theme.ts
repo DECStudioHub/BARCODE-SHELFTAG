@@ -88,9 +88,9 @@ export const PALETTES: Record<Exclude<ColorPaletteId, 'custom'>, ColorPaletteThe
 };
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
-  systemName: 'SHELF TAG',
-  systemTagline: 'Inventory System',
-  systemSubtitle: 'Excel to Printable Barcode Tags',
+  systemName: 'PRG SHELFTAG & BARCODE GENERATOR',
+  systemTagline: 'Inventory System V2',
+  systemSubtitle: 'Count Tags, Shelf Tags & PP Tags',
   paletteId: 'emerald',
   customPrimaryColor: '#047857',
   customLogoUrl: '/prince-logo.svg',

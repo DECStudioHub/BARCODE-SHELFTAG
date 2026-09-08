@@ -45,6 +45,17 @@ export function generateBarcodeSvgString(
       textMargin: 2,
       valid: () => true,
     });
+
+    // Subtle adjustment: slightly move human-readable barcode text toward center of barcode
+    const textElem = svgNode.querySelector ? svgNode.querySelector('text') : null;
+    if (textElem) {
+      const currentX = parseFloat(textElem.getAttribute('x') || '0');
+      if (currentX > 0) {
+        const subtleShift = Math.max(4, Math.round(fontSize * 0.65));
+        textElem.setAttribute('x', String(Math.round((currentX - subtleShift) * 10) / 10));
+      }
+    }
+
     return svgNode.outerHTML;
   } catch (err) {
     // If specific format fails (e.g. invalid checksum for EAN13), fallback to CODE128
@@ -60,6 +71,17 @@ export function generateBarcodeSvgString(
         margin: 2,
         textMargin: 2,
       });
+
+      // Subtle adjustment: slightly move human-readable barcode text toward center of barcode
+      const fallbackTextElem = svgNode.querySelector ? svgNode.querySelector('text') : null;
+      if (fallbackTextElem) {
+        const currentX = parseFloat(fallbackTextElem.getAttribute('x') || '0');
+        if (currentX > 0) {
+          const subtleShift = Math.max(4, Math.round(fontSize * 0.65));
+          fallbackTextElem.setAttribute('x', String(Math.round((currentX - subtleShift) * 10) / 10));
+        }
+      }
+
       return svgNode.outerHTML;
     } catch {
       // Fallback SVG representation

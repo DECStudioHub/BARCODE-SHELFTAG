@@ -39,7 +39,7 @@ export interface ValidationSummary {
 
 export type BarcodeType = 'CODE128' | 'CODE39' | 'EAN13' | 'UPCA';
 
-export type PaperSize = 'A4' | 'LETTER' | 'CUSTOM';
+export type PaperSize = 'A4' | 'LETTER' | 'SHORT_BOND' | 'LONG_BOND' | 'LEGAL' | 'CUSTOM';
 
 export interface PaperDimensions {
   widthMm: number;
@@ -91,7 +91,193 @@ export interface InventorySession {
   sessionNotes: string;
 }
 
-export type AppStep = 'import' | 'validate' | 'configure' | 'preview' | 'settings';
+export type AppStep = 'import' | 'validate' | 'configure' | 'preview' | 'settings' | 'count_sheet';
+
+export type AppModuleId = 'count_tag' | 'shelftag_pp';
+
+export type ShelfTagStyle = 'white' | 'yellow';
+
+export interface ShelfTagItem {
+  id: string;
+  tagStyle: ShelfTagStyle;
+  description: string;
+  promoHeader?: string;
+  promoSubtext?: string;
+  promoValidity?: string;
+  sku: string;
+  barcode: string;
+  regularPrice: number;
+  promoPrice?: number | null;
+  unit: string;
+  locator: string;
+  category?: string;
+  isSelected?: boolean;
+  copies?: number;
+}
+
+export type Module2PresetId = 'standard' | 'compact' | 'medium' | 'large' | string;
+
+export type YellowPaletteId = 'golden' | 'canary' | 'amber' | 'lemon';
+
+export type Module2TagType = 'shelftag' | 'pp_tag';
+
+export type TagFieldId =
+  | 'description'
+  | 'sku'
+  | 'barcode'
+  | 'regularPrice'
+  | 'promoPrice'
+  | 'priceUnit'
+  | 'locator'
+  | 'promoHeader'
+  | 'logo';
+
+export type TextTransformMode = 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+
+export interface TagFieldConfig {
+  id: TagFieldId;
+  name: string;
+  visible: boolean;
+  // Position & Dimensions in mm
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+
+  // Typography
+  fontFamily: string;
+  fontSizePt: number;
+  fontWeight: 'normal' | 'medium' | 'bold';
+  fontStyle: 'normal' | 'italic';
+  textDecoration: 'none' | 'underline';
+  textColor?: string;
+
+  // Alignment
+  textAlign: 'left' | 'center' | 'right';
+  verticalAlign: 'top' | 'middle' | 'bottom';
+
+  // Text Transform & Wrapping
+  textTransform: TextTransformMode;
+  textWrap: boolean;
+  maxLines: number;
+  lineHeightPt?: number;
+
+  // Border & Appearance
+  borderStyle: 'none' | 'solid' | 'dashed' | 'dotted';
+  borderWidthPx: number;
+  borderRadiusMm: number;
+  borderColor?: string;
+  backgroundColor?: string;
+
+  // Padding in mm
+  paddingTopMm: number;
+  paddingBottomMm: number;
+  paddingLeftMm: number;
+  paddingRightMm: number;
+
+  // Specialized Settings
+  barcodeFormat?: BarcodeType;
+  showBarcodeText?: boolean;
+  barcodeTextSizePt?: number;
+  barcodeAlign?: 'left' | 'center' | 'right';
+
+  currencySymbol?: string;
+  showCurrencySymbol?: boolean;
+  decimalPlaces?: number;
+  strikeThrough?: boolean;
+  prefixText?: string;
+
+  locatorBadge?: boolean;
+}
+
+export interface TagLayoutPreset {
+  id: string;
+  name: string;
+  tagType: Module2TagType;
+  description?: string;
+  isBuiltIn?: boolean;
+
+  // Tag Dimensions
+  tagWidthMm: number;
+  tagHeightMm: number;
+
+  // Sheet Layout Settings
+  paperSize: PaperSize;
+  orientation: 'portrait' | 'landscape';
+  columns: number;
+  rowGapMm: number;
+  colGapMm: number;
+  topMarginMm: number;
+  sideMarginMm: number;
+  customWidthMm?: number;
+  customHeightMm?: number;
+
+  // Style Settings
+  yellowPalette: YellowPaletteId;
+  currencySymbol: string;
+  showBorder: boolean;
+  showCutGuides: boolean;
+  showLogo: boolean;
+  promoHeader?: string;
+
+  // Individual Field Configurations
+  fields: Record<TagFieldId, TagFieldConfig>;
+}
+
+export interface Module2Config {
+  presetId: Module2PresetId;
+  tagWidthMm: number;
+  tagHeightMm: number;
+  columns: number;
+  paperSize: PaperSize;
+  orientation?: 'portrait' | 'landscape';
+  customWidthMm: number;
+  customHeightMm: number;
+  rowGapMm: number;
+  colGapMm: number;
+  topMarginMm: number;
+  bottomMarginMm?: number;
+  sideMarginMm: number;
+  leftMarginMm?: number;
+  rightMarginMm?: number;
+  centerColumns?: boolean;
+  yellowPalette: YellowPaletteId;
+  currencySymbol: string;
+  barcodeFormat: BarcodeType;
+  showStrikeThroughRegular: boolean;
+  showCutGuides: boolean;
+  showBorder: boolean;
+  showLogo: boolean;
+
+  // Added: Field Layout & Preset System
+  activeTagType?: Module2TagType;
+  shelftagConfig?: TagLayoutPreset;
+  ppTagConfig?: TagLayoutPreset;
+  shelftagPresets?: TagLayoutPreset[];
+  ppTagPresets?: TagLayoutPreset[];
+}
+
+// Keep legacy Module2LayoutConfig alias for backwards compatibility
+export type Module2LayoutConfig = Module2Config & {
+  tagType?: 'shelftag' | 'pp_tag';
+  orientation?: 'portrait' | 'landscape';
+  marginTopMm?: number;
+  marginBottomMm?: number;
+  marginLeftMm?: number;
+  marginRightMm?: number;
+  gapRowMm?: number;
+  gapColMm?: number;
+  barcodeType?: BarcodeType;
+  barcodeHeightMm?: number;
+  fontSizeTitle?: number;
+  fontSizeSku?: number;
+  fontSizeUpc?: number;
+  fontSizePrice?: number;
+  fontSizeLocator?: number;
+  defaultCopies?: number;
+  itemCopies?: Record<string, number>;
+  logoUrl?: string;
+};
 
 export type ColorPaletteId = 'emerald' | 'blue' | 'indigo' | 'crimson' | 'amber' | 'violet' | 'slate' | 'custom';
 
@@ -117,3 +303,104 @@ export interface SystemSettings {
   customLogoUrl: string;
   applyLogoToShelfTags: boolean;
 }
+
+// ----------------------------------------------------
+// MODULE 1: COUNT SHEET TYPES
+// ----------------------------------------------------
+
+export type CountSheetColumnId = 'sku' | 'barcode' | 'description' | 'count';
+
+export interface CountSheetColumnWidths {
+  skuMm: number;
+  barcodeMm: number;
+  descMm: number;
+  countMm: number;
+}
+
+export interface CountSheetConfig {
+  paperSize: PaperSize;
+  customWidthMm: number;
+  customHeightMm: number;
+  orientation: 'portrait' | 'landscape';
+  rowsPerPage: number;
+  marginTopMm: number;
+  marginBottomMm: number;
+  marginLeftMm: number;
+  marginRightMm: number;
+  rowHeightMm: number;
+  tableWidthPercent: number;
+  columnWidths: CountSheetColumnWidths;
+
+  // Movable column sequence & visibility
+  columnOrder?: CountSheetColumnId[];
+  columnVisibility?: Record<CountSheetColumnId, boolean>;
+
+  // Typography
+  headerFontFamily: string;
+  headerFontSizePt: number;
+  headerFontWeight: 'normal' | 'medium' | 'bold';
+
+  bodyFontFamily: string;
+  bodyFontSizePt: number;
+
+  skuFontSizePt: number;
+  barcodeTextFontSizePt: number;
+  descFontSizePt: number;
+  countHeaderFontSizePt: number;
+
+  // Description text wrapping
+  wrapDescription: boolean;
+  descMaxLines: number;
+  descLineHeight: number;
+
+  // Barcode Column
+  showBarcodeGraphic: boolean;
+  barcodeHeightMm: number;
+  barcodeFormat: BarcodeType;
+  showBarcodeValueText: boolean;
+  barcodeAlign: 'left' | 'center' | 'right';
+
+  // Locator Barcode (Upper Right)
+  showLocatorBarcode: boolean;
+  locatorBarcodeHeightMm: number;
+  locatorBarcodeWidthScale: number;
+  locatorBarcodeFormat: BarcodeType;
+  showLocatorBarcodeText: boolean;
+
+  // Layout & Table Features
+  showGridLines: boolean;
+  borderWidthPx: number;
+  showRowNumbers: boolean;
+  showSignatures: boolean;
+  showStoreHeader: boolean;
+  showPageNumbers: boolean;
+  emptyRowsToFillPage?: boolean;
+}
+
+export interface CountSheetPreset {
+  id: string;
+  name: string;
+  description: string;
+  isDefault?: boolean;
+  config: CountSheetConfig;
+}
+
+export interface CountSheetPageData {
+  pageNumber: number;
+  totalPagesForLocator: number;
+  globalPageIndex: number;
+  totalGlobalPages: number;
+  locator: string;
+  items: InventoryItem[];
+  startIndex: number;
+  endIndex: number;
+}
+
+export interface CountSheetSummary {
+  totalItems: number;
+  totalLocators: number;
+  rowsPerPage: number;
+  estimatedPages: number;
+  locatorCounts: { locator: string; count: number; pages: number }[];
+}
+

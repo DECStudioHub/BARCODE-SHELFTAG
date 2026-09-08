@@ -8,11 +8,16 @@ import {
   Tag,
   ExternalLink,
   Settings,
+  Layers,
+  ClipboardList,
+  TableProperties,
 } from 'lucide-react';
-import { AppStep, InventorySession, SystemSettings } from '../types';
+import { AppStep, InventorySession, SystemSettings, AppModuleId } from '../types';
 import { getPaletteTheme } from '../utils/theme';
 
 interface NavbarProps {
+  activeModule: AppModuleId;
+  onSelectModule: (module: AppModuleId) => void;
   currentStep: AppStep;
   onSelectStep: (step: AppStep) => void;
   itemCount: number;
@@ -23,6 +28,8 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
+  activeModule,
+  onSelectModule,
   currentStep,
   onSelectStep,
   itemCount,
@@ -33,7 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const activeTheme = getPaletteTheme(settings.paletteId, settings.customPrimaryColor);
 
-  const steps: { id: AppStep; label: string; number: number; icon: any }[] = [
+  const module1Steps: { id: AppStep; label: string; number: number; icon: any }[] = [
     { id: 'import', label: '1. Import Excel', number: 1, icon: FileSpreadsheet },
     { id: 'validate', label: '2. Validate & Edit', number: 2, icon: CheckCircle2 },
     { id: 'configure', label: '3. Configure Layout', number: 3, icon: Sliders },
@@ -52,13 +59,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="bg-white border-b border-zinc-200 sticky top-0 z-30 shadow-2xs print:hidden">
+      {/* Top Bar: Brand, Module Selector & Global Actions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Brand Logo & Name */}
           <div
-            onClick={() => onSelectStep('import')}
+            onClick={() => {
+              if (activeModule === 'count_tag') {
+                onSelectStep('import');
+              }
+            }}
             className="flex items-center gap-3 shrink-0 cursor-pointer group"
-            title="Go to Home / Import"
+            title="PRG Shelftag & Barcode Generator"
           >
             <div
               className="w-9 h-9 rounded-lg text-white flex items-center justify-center shadow-xs overflow-hidden transition-transform group-hover:scale-105"
@@ -78,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-black text-sm tracking-tight text-zinc-900 group-hover:text-black">
-                  {settings.systemName || 'SHELF TAG'}
+                  {settings.systemName || 'PRG SHELFTAG & BARCODE GENERATOR'}
                 </span>
                 <span
                   className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm border transition-colors"
@@ -88,67 +100,51 @@ export const Navbar: React.FC<NavbarProps> = ({
                     color: activeTheme.primaryText,
                   }}
                 >
-                  {settings.systemTagline || 'Inventory System'}
+                  {settings.systemTagline || 'Inventory System V2'}
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 font-medium truncate max-w-[200px] sm:max-w-none">
-                {settings.systemSubtitle || 'Excel to Printable Barcode Tags'}
+                {settings.systemSubtitle || 'Count Tags, Shelf Tags & PP Tags'}
               </p>
             </div>
           </div>
 
-          {/* Stepper Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {steps.map((step, idx) => {
-              const status = getStepStatus(step.id);
-              const isCurrent = status === 'current';
-              const isAccessible = status === 'accessible' || itemCount > 0;
-              const Icon = step.icon;
+          {/* Center: Module Selector */}
+          <div className="hidden md:flex items-center p-1 bg-zinc-100/90 rounded-xl border border-zinc-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => onSelectModule('count_tag')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeModule === 'count_tag'
+                  ? 'bg-white text-zinc-950 shadow-xs ring-1 ring-zinc-200'
+                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'
+              }`}
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              <span>COUNT TAG</span>
+            </button>
 
-              return (
-                <React.Fragment key={step.id}>
-                  {idx > 0 && (
-                    <div
-                      className="w-4 h-0.5 mx-0.5 transition-colors"
-                      style={{
-                        backgroundColor:
-                          getStepStatus(steps[idx - 1].id) === 'accessible' || isCurrent
-                            ? activeTheme.primary
-                            : '#e4e4e7',
-                      }}
-                    />
-                  )}
+            <button
+              type="button"
+              onClick={() => onSelectModule('shelftag_pp')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeModule === 'shelftag_pp'
+                  ? 'bg-zinc-900 text-white shadow-xs'
+                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>SHELFTAG / PP TAG</span>
+            </button>
+          </div>
 
-                  <button
-                    type="button"
-                    disabled={!isAccessible}
-                    onClick={() => onSelectStep(step.id)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isCurrent
-                        ? 'text-white shadow-xs'
-                        : isAccessible
-                        ? 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
-                        : 'text-zinc-400 cursor-not-allowed opacity-50'
-                    }`}
-                    style={{
-                      backgroundColor: isCurrent ? activeTheme.primary : 'transparent',
-                    }}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{step.label}</span>
-                  </button>
-                </React.Fragment>
-              );
-            })}
-          </nav>
-
-          {/* Session / Item Count Quick Status & Right Actions */}
+          {/* Right Actions */}
           <div className="flex items-center gap-2">
             {itemCount > 0 && (
-              <div className="hidden sm:flex items-center gap-2 text-xs bg-zinc-100/80 px-2.5 py-1.5 rounded-lg border border-zinc-200">
-                <span className="text-zinc-500 font-medium">Tags:</span>
+              <div className="hidden lg:flex items-center gap-2 text-xs bg-zinc-100/80 px-2.5 py-1.5 rounded-lg border border-zinc-200">
+                <span className="text-zinc-500 font-medium">Data:</span>
                 <span className="font-mono font-bold text-zinc-900">
-                  {selectedCount} / {itemCount}
+                  {selectedCount} / {itemCount} items
                 </span>
                 {session.branch && (
                   <span className="border-l border-zinc-300 pl-2 text-zinc-600 font-medium truncate max-w-[110px]">
@@ -158,7 +154,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
-            {/* Quick Settings Icon Button (especially handy for mobile/tablet) */}
+            {/* Quick Settings Icon Button */}
             <button
               type="button"
               onClick={() => onSelectStep('settings')}
@@ -200,6 +196,107 @@ export const Navbar: React.FC<NavbarProps> = ({
             </a>
           </div>
         </div>
+
+        {/* Mobile Module Selector Bar */}
+        <div className="flex md:hidden items-center justify-center pb-3 gap-2 border-t border-zinc-100 pt-2">
+          <button
+            type="button"
+            onClick={() => onSelectModule('count_tag')}
+            className={`flex-1 py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-all ${
+              activeModule === 'count_tag'
+                ? 'bg-zinc-900 text-white shadow-xs'
+                : 'bg-zinc-100 text-zinc-700'
+            }`}
+          >
+            COUNT TAG
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectModule('shelftag_pp')}
+            className={`flex-1 py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-all ${
+              activeModule === 'shelftag_pp'
+                ? 'bg-zinc-900 text-white shadow-xs'
+                : 'bg-zinc-100 text-zinc-700'
+            }`}
+          >
+            SHELFTAG / PP TAG
+          </button>
+        </div>
+
+        {/* Count Tag Sub-Navigation: 4-Step Stepper */}
+        {activeModule === 'count_tag' && currentStep !== 'settings' && (
+          <div className="py-2.5 border-t border-zinc-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-extrabold text-zinc-400 uppercase tracking-wider">
+                Count Tag Workflow:
+              </span>
+            </div>
+
+            <nav className="flex items-center gap-1 overflow-x-auto">
+              {module1Steps.map((step, idx) => {
+                const status = getStepStatus(step.id);
+                const isCurrent = status === 'current';
+                const isAccessible = status === 'accessible' || itemCount > 0;
+                const Icon = step.icon;
+
+                return (
+                  <React.Fragment key={step.id}>
+                    {idx > 0 && (
+                      <div
+                        className="w-3 h-0.5 mx-0.5 transition-colors hidden sm:block"
+                        style={{
+                          backgroundColor:
+                            getStepStatus(module1Steps[idx - 1].id) === 'accessible' || isCurrent
+                              ? activeTheme.primary
+                              : '#e4e4e7',
+                        }}
+                      />
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={!isAccessible}
+                      onClick={() => onSelectStep(step.id)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                        isCurrent
+                          ? 'text-white shadow-xs'
+                          : isAccessible
+                          ? 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+                          : 'text-zinc-400 cursor-not-allowed opacity-50'
+                      }`}
+                      style={{
+                        backgroundColor: isCurrent ? activeTheme.primary : 'transparent',
+                      }}
+                    >
+                      <Icon className="w-3 h-3" />
+                      <span>{step.label}</span>
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Dedicated Count Sheet Generator Action */}
+              <div className="border-l border-zinc-200 pl-2 ml-1.5 flex items-center">
+                <button
+                  type="button"
+                  disabled={itemCount === 0}
+                  onClick={() => onSelectStep('count_sheet')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    currentStep === 'count_sheet'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : itemCount > 0
+                      ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
+                      : 'text-zinc-400 cursor-not-allowed opacity-50'
+                  }`}
+                  title="Generate printable Count Sheet form for selling area"
+                >
+                  <TableProperties className="w-3.5 h-3.5" />
+                  <span>Count Sheet</span>
+                </button>
+              </div>
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );

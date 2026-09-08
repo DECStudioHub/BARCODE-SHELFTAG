@@ -16,6 +16,8 @@ import {
   Square,
   RefreshCw,
   Eye,
+  FileSpreadsheet,
+  Tag,
 } from 'lucide-react';
 import { InventoryItem, ValidationSummary, ValidationIssue } from '../types';
 import { revalidateItems, exportInventoryToExcel } from '../utils/excelParser';
@@ -26,6 +28,7 @@ interface Step2ValidateProps {
   filename: string;
   onUpdateItems: (newItems: InventoryItem[], newSummary: ValidationSummary) => void;
   onContinue: () => void;
+  onGenerateCountSheet?: () => void;
   onBackToImport: () => void;
 }
 
@@ -39,6 +42,7 @@ export const Step2Validate: React.FC<Step2ValidateProps> = ({
   filename,
   onUpdateItems,
   onContinue,
+  onGenerateCountSheet,
   onBackToImport,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -230,14 +234,28 @@ export const Step2Validate: React.FC<Step2ValidateProps> = ({
               <Download className="w-3.5 h-3.5 text-zinc-500" />
               Export Excel
             </button>
+            {onGenerateCountSheet && (
+              <button
+                type="button"
+                onClick={onGenerateCountSheet}
+                disabled={selectedCount === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-emerald-950 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 disabled:bg-zinc-200 disabled:border-zinc-300 disabled:text-zinc-400 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                title="Generate printable Count Sheets for physical inventory counting"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-800" />
+                <span>Generate Count Sheet</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onContinue}
               disabled={selectedCount === 0}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:bg-zinc-300 rounded-lg shadow-sm transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:bg-zinc-300 rounded-lg shadow-sm transition-colors cursor-pointer"
+              title="Configure and generate shelf count tags"
             >
-              <span>Continue to Layout</span>
-              <ArrowRight className="w-4 h-4" />
+              <Tag className="w-3.5 h-3.5" />
+              <span>Generate Count Tags</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
             </button>
           </div>
         </div>
@@ -679,14 +697,27 @@ export const Step2Validate: React.FC<Step2ValidateProps> = ({
             <span className="font-bold text-zinc-800">{items.length}</span> items (
             <span className="font-bold text-emerald-700">{selectedCount}</span> selected to generate)
           </div>
-          <button
-            type="button"
-            onClick={onContinue}
-            disabled={selectedCount === 0}
-            className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 disabled:text-zinc-400 cursor-pointer"
-          >
-            Next: Configure Shelf Tag Layout →
-          </button>
+          <div className="flex items-center gap-3">
+            {onGenerateCountSheet && (
+              <button
+                type="button"
+                onClick={onGenerateCountSheet}
+                disabled={selectedCount === 0}
+                className="inline-flex items-center gap-1.5 font-bold text-emerald-800 hover:text-emerald-900 disabled:text-zinc-400 cursor-pointer text-xs bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-colors"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Generate Count Sheet</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onContinue}
+              disabled={selectedCount === 0}
+              className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 disabled:text-zinc-400 cursor-pointer"
+            >
+              <span>Next: Configure Count Tags →</span>
+            </button>
+          </div>
         </div>
       </div>
 
