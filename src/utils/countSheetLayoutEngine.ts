@@ -278,11 +278,11 @@ export function sortInventoryItemsForCountSheet(
       valA = String(a.sku || a.id || '').trim();
       valB = String(b.sku || b.id || '').trim();
     } else if (field === 'description') {
-      valA = String(a.description || a.desc || a.name || '').trim();
-      valB = String(b.description || b.desc || b.name || '').trim();
+      valA = String(a.description || (a as any).desc || (a as any).name || '').trim();
+      valB = String(b.description || (b as any).desc || (b as any).name || '').trim();
     } else if (field === 'barcode') {
-      valA = String(a.barcode || a.barcode_number || '').trim();
-      valB = String(b.barcode || b.barcode_number || '').trim();
+      valA = String(a.barcode || (a as any).barcode_number || '').trim();
+      valB = String(b.barcode || (b as any).barcode_number || '').trim();
     }
 
     // Keep items with empty values at the very bottom
