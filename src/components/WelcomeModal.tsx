@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles,
   FileSpreadsheet,
@@ -10,7 +10,9 @@ import {
   ArrowRight,
   X,
   FileCheck,
+  Volume2,
 } from 'lucide-react';
+import { playRetailWelcomeSound } from '../utils/welcomeAudio';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -25,6 +27,48 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   onLoadDemoData,
   onOpenImport,
 }) => {
+  const [isPlayingSound, setIsPlayingSound] = useState<boolean>(false);
+  const playedOnceForOpenRef = useRef<boolean>(false);
+
+  // Play short retail welcome chime once on modal opening if permitted
+  useEffect(() => {
+    if (isOpen) {
+      if (!playedOnceForOpenRef.current) {
+        playedOnceForOpenRef.current = true;
+        setIsPlayingSound(true);
+        playRetailWelcomeSound()
+          .then((played) => {
+            if (!played) {
+              setIsPlayingSound(false);
+            } else {
+              setTimeout(() => setIsPlayingSound(false), 2200);
+            }
+          })
+          .catch(() => {
+            setIsPlayingSound(false);
+          });
+      }
+    } else {
+      playedOnceForOpenRef.current = false;
+      setIsPlayingSound(false);
+    }
+  }, [isOpen]);
+
+  const handleManualPlaySound = () => {
+    setIsPlayingSound(true);
+    playRetailWelcomeSound()
+      .then((played) => {
+        if (!played) {
+          setIsPlayingSound(false);
+        } else {
+          setTimeout(() => setIsPlayingSound(false), 2200);
+        }
+      })
+      .catch(() => {
+        setIsPlayingSound(false);
+      });
+  };
+
   if (!isOpen) return null;
 
   const handleDontShowAgain = (checked: boolean) => {
@@ -39,34 +83,60 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-6 animate-scaleUp overflow-y-auto max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-zinc-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">
-              <Tag className="w-6 h-6 text-emerald-700" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-zinc-900 tracking-tight">
-                  PRG Shelftag & Barcode System V2
-                </h2>
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-full uppercase tracking-wider">
-                  Ready
-                </span>
-              </div>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Physical Inventory Count Sheets, Tag Generation & Retail Shelf Labels
-              </p>
-            </div>
-          </div>
+      <div className="bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-5 animate-scaleUp overflow-y-auto max-h-[90vh]">
+        {/* Top Utility Bar: Sound control & Close */}
+        <div className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-3">
+          <button
+            type="button"
+            onClick={handleManualPlaySound}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+              isPlayingSound
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400/30'
+                : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-700 hover:text-zinc-950 border-zinc-200 shadow-2xs'
+            }`}
+            title="Play Retail Welcome Sound Chime"
+          >
+            <Volume2 className={`w-3.5 h-3.5 ${isPlayingSound ? 'text-emerald-700 animate-pulse' : 'text-zinc-500'}`} />
+            <span>{isPlayingSound ? 'Playing Chime...' : '🔊 Play Welcome Sound'}</span>
+          </button>
+
           <button
             type="button"
             onClick={onClose}
             className="p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg cursor-pointer transition-colors"
+            title="Close Welcome"
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Welcome Banner */}
+        <div className="text-center space-y-2.5 pb-4 border-b border-zinc-100">
+          {/* 1. WELCOME */}
+          <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-800 text-xs font-black tracking-widest uppercase shadow-2xs">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <span>WELCOME</span>
+          </div>
+
+          {/* 2. DECStudioAiCreation BRANDING: Bold, 50px Desktop, Center Aligned */}
+          <h1 className="font-bold text-3xl sm:text-4xl md:text-[50px] leading-tight md:leading-none text-zinc-900 tracking-tight text-center">
+            DECStudioAiCreation
+          </h1>
+
+          {/* 3. System Identifier */}
+          <div className="flex items-center justify-center gap-2 flex-wrap pt-0.5">
+            <span className="font-mono font-bold text-xs sm:text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200 shadow-2xs">
+              PRG-Shelftag-Barcode-Generator-V2
+            </span>
+            <span className="px-2 py-0.5 bg-zinc-100 text-zinc-700 font-bold text-[10px] rounded-full uppercase tracking-wider border border-zinc-200">
+              Ready
+            </span>
+          </div>
+
+          {/* 4. Short existing system description */}
+          <p className="text-xs sm:text-sm text-zinc-500 max-w-xl mx-auto pt-0.5 leading-relaxed">
+            Physical Inventory Count Sheets, Tag Generation & Retail Shelf Labels
+          </p>
         </div>
 
         {/* Feature Grid */}

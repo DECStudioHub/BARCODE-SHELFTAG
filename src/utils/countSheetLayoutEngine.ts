@@ -4,6 +4,8 @@ import {
   CountSheetConfig,
   CountSheetPageData,
   CountSheetPreset,
+  CountSheetSortField,
+  CountSheetSortOrder,
   CountSheetSummary,
   InventoryItem,
   PaperSize,
@@ -42,6 +44,8 @@ export const DEFAULT_COUNT_SHEET_CONFIG: CountSheetConfig = {
     descMm: 88,
     countMm: 34,
   },
+  sortField: 'original',
+  sortOrder: 'asc',
   columnOrder: [...DEFAULT_COUNT_SHEET_COLUMN_ORDER],
   columnVisibility: { ...DEFAULT_COUNT_SHEET_COLUMN_VISIBILITY },
 
@@ -246,21 +250,75 @@ export function groupItemsByLocator(items: InventoryItem[]): Record<string, Inve
 }
 
 /**
- * Paginate items by locator and rowsPerPage
+ * Natural/alphanumeric sorting comparator for Count Sheet items.
+ *
+ * Rules:
+ * - Supports sorting by SKU, DESCRIPTION, or BARCODE. (COUNT is excluded).
+ * - Ascending: A -> Z (1 -> 9). Descending: Z -> A (9 -> 1).
+ * - For SKU and Barcode, uses natural alphanumeric ordering so SKU-2 precedes SKU-10.
+ * - Does NOT modify the source array. Returns a new shallow array.
+ * - If field is 'original' or empty, returns original Excel sequence intact.
+ */
+export function sortInventoryItemsForCountSheet(
+  items: InventoryItem[],
+  field: CountSheetSortField = 'original',
+  order: CountSheetSortOrder = 'asc'
+): InventoryItem[] {
+  if (!field || field === 'original') {
+    return [...items];
+  }
+
+  const factor = order === 'desc' ? -1 : 1;
+
+  return [...items].sort((a, b) => {
+    let valA = '';
+    let valB = '';
+
+    if (field === 'sku') {
+      valA = String(a.sku || a.id || '').trim();
+      valB = String(b.sku || b.id || '').trim();
+    } else if (field === 'description') {
+      valA = String(a.description || a.desc || a.name || '').trim();
+      valB = String(b.description || b.desc || b.name || '').trim();
+    } else if (field === 'barcode') {
+      valA = String(a.barcode || a.barcode_number || '').trim();
+      valB = String(b.barcode || b.barcode_number || '').trim();
+    }
+
+    // Keep items with empty values at the very bottom
+    if (!valA && !valB) return 0;
+    if (!valA) return 1;
+    if (!valB) return -1;
+
+    return factor * valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+  });
+}
+
+/**
+ * Paginate items by locator and rowsPerPage, with optional locator grouping and sorting
  */
 export function paginateCountSheetItems(
   items: InventoryItem[],
   rowsPerPage: number = 20,
-  filterLocator?: string
+  filterLocator?: string | string[],
+  sortField?: CountSheetSortField,
+  sortOrder?: CountSheetSortOrder
 ): CountSheetPageData[] {
   const selectedItems = items.filter(it => it.isSelected !== false);
   const grouped = groupItemsByLocator(selectedItems);
   const pages: CountSheetPageData[] = [];
 
   let globalPageIndex = 1;
-  const targetLocators = filterLocator && filterLocator !== 'ALL'
-    ? [filterLocator]
-    : Object.keys(grouped);
+  let targetLocators: string[] = [];
+
+  if (Array.isArray(filterLocator)) {
+    const selectedSet = new Set(filterLocator);
+    targetLocators = Object.keys(grouped).filter(loc => selectedSet.has(loc));
+  } else if (filterLocator && filterLocator !== 'ALL') {
+    targetLocators = Object.keys(grouped).filter(loc => loc === filterLocator);
+  } else {
+    targetLocators = Object.keys(grouped);
+  }
 
   // First count total global pages
   let totalGlobalPages = 0;
@@ -271,7 +329,12 @@ export function paginateCountSheetItems(
   });
 
   targetLocators.forEach(loc => {
-    const locItems = grouped[loc] || [];
+    let locItems = grouped[loc] || [];
+    // Apply sorting strictly within this locator group
+    if (sortField && sortField !== 'original') {
+      locItems = sortInventoryItemsForCountSheet(locItems, sortField, sortOrder || 'asc');
+    }
+
     const totalPagesForLoc = Math.max(1, Math.ceil(locItems.length / Math.max(1, rowsPerPage)));
 
     if (locItems.length === 0) {

@@ -30,7 +30,7 @@ export async function generateCountSheetPdf(
   items: InventoryItem[],
   config: CountSheetConfig,
   session: InventorySession,
-  selectedLocator: string = 'ALL',
+  selectedLocator: string | string[] = 'ALL',
   onProgress?: (progress: CountSheetPdfProgress) => void
 ): Promise<jsPDF> {
   const selectedItems = items.filter(it => it.isSelected !== false);
@@ -42,7 +42,9 @@ export async function generateCountSheetPdf(
   const pages: CountSheetPageData[] = paginateCountSheetItems(
     items,
     config.rowsPerPage || 15,
-    selectedLocator
+    selectedLocator,
+    config.sortField,
+    config.sortOrder
   );
 
   if (pages.length === 0) {
@@ -582,7 +584,7 @@ export async function downloadCountSheetPdf(
   items: InventoryItem[],
   config: CountSheetConfig,
   session: InventorySession,
-  selectedLocator: string = 'ALL',
+  selectedLocator: string | string[] = 'ALL',
   onProgress?: (progress: CountSheetPdfProgress) => void
 ): Promise<string> {
   const doc = await generateCountSheetPdf(items, config, session, selectedLocator, onProgress);
@@ -594,7 +596,17 @@ export async function downloadCountSheetPdf(
     ? session.inventoryDate.replace(/[^0-9a-zA-Z_-]/g, '_')
     : new Date().toISOString().slice(0, 10);
 
-  const locSuffix = selectedLocator && selectedLocator !== 'ALL' ? `_${selectedLocator}` : '';
+  let locSuffix = '';
+  if (Array.isArray(selectedLocator)) {
+    if (selectedLocator.length === 1) {
+      locSuffix = `_${selectedLocator[0]}`;
+    } else if (selectedLocator.length > 1) {
+      locSuffix = `_${selectedLocator.length}Locators`;
+    }
+  } else if (selectedLocator && selectedLocator !== 'ALL') {
+    locSuffix = `_${selectedLocator}`;
+  }
+
   const filename = `CountSheet-${dateStr}${locSuffix}.pdf`;
 
   triggerFileDownload(blobUrl, filename);

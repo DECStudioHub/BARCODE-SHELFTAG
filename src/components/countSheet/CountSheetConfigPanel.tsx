@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarcodeType,
   CountSheetColumnId,
   CountSheetConfig,
   CountSheetPreset,
+  CountSheetSortField,
+  CountSheetSortOrder,
   PaperSize,
 } from '../../types';
 import {
@@ -17,6 +19,7 @@ import {
   AlignRight,
   ArrowLeft,
   ArrowRight,
+  ArrowUpDown,
   Bookmark,
   Check,
   ChevronDown,
@@ -55,10 +58,43 @@ export const CountSheetConfigPanel: React.FC<CountSheetConfigPanelProps> = ({
   onDeletePreset,
   onResetToDefaults,
 }) => {
-  const [activeSection, setActiveSection] = useState<'presets' | 'paper' | 'columns' | 'table' | 'typography' | 'barcode'>('presets');
+  const [activeSection, setActiveSection] = useState<'presets' | 'sorting' | 'paper' | 'columns' | 'table' | 'typography' | 'barcode'>('presets');
   const [newPresetName, setNewPresetName] = useState('');
   const [newPresetDesc, setNewPresetDesc] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  // Sorting Local Draft State
+  const [draftSortField, setDraftSortField] = useState<'sku' | 'description' | 'barcode'>(
+    config.sortField && config.sortField !== 'original' ? config.sortField : 'sku'
+  );
+  const [draftSortOrder, setDraftSortOrder] = useState<'asc' | 'desc'>(
+    config.sortOrder || 'asc'
+  );
+
+  useEffect(() => {
+    if (config.sortField && config.sortField !== 'original') {
+      setDraftSortField(config.sortField);
+    }
+    if (config.sortOrder) {
+      setDraftSortOrder(config.sortOrder);
+    }
+  }, [config.sortField, config.sortOrder]);
+
+  const handleApplySort = () => {
+    onUpdateConfig({
+      ...config,
+      sortField: draftSortField,
+      sortOrder: draftSortOrder,
+    });
+  };
+
+  const handleClearSort = () => {
+    onUpdateConfig({
+      ...config,
+      sortField: 'original',
+      sortOrder: 'asc',
+    });
+  };
 
   // Compute paper and printable dimensions
   const paperDims = getCountSheetPaperDimensions(

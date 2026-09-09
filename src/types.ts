@@ -317,6 +317,9 @@ export interface CountSheetColumnWidths {
   countMm: number;
 }
 
+export type CountSheetSortField = 'sku' | 'description' | 'barcode' | 'original';
+export type CountSheetSortOrder = 'asc' | 'desc';
+
 export interface CountSheetConfig {
   paperSize: PaperSize;
   customWidthMm: number;
@@ -330,6 +333,10 @@ export interface CountSheetConfig {
   rowHeightMm: number;
   tableWidthPercent: number;
   columnWidths: CountSheetColumnWidths;
+
+  // Sorting
+  sortField?: CountSheetSortField;
+  sortOrder?: CountSheetSortOrder;
 
   // Movable column sequence & visibility
   columnOrder?: CountSheetColumnId[];

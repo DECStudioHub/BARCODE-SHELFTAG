@@ -22,17 +22,23 @@ import {
 } from '../../utils/countSheetPdfGenerator';
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
+  Check,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   Download,
   Eye,
   FileSpreadsheet,
+  Filter,
   Grid,
   Loader2,
   Maximize2,
   Printer,
+  RotateCcw,
   Sliders,
+  Square,
   Tag,
   X,
   ZoomIn,
@@ -79,8 +85,115 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
     return DEFAULT_COUNT_SHEET_CONFIG;
   });
 
+  // Calculate summary statistics
+  const summary = useMemo(() => {
+    return calculateCountSheetSummary(items, config.rowsPerPage);
+  }, [items, config.rowsPerPage]);
+
+  // List of all distinct available locators in the imported dataset
+  const allLocators = useMemo(() => {
+    return summary.locatorCounts.map(lc => lc.locator);
+  }, [summary.locatorCounts]);
+
+  // Dataset fingerprint to isolate printed statuses between different imported Excel datasets
+  const datasetFingerprint = useMemo(() => {
+    if (!items || items.length === 0) return 'empty';
+    const first = items[0];
+    const last = items[items.length - 1];
+    const firstKey = first ? `${first.sku || first.id || ''}_${first.locator || ''}` : '';
+    const lastKey = last ? `${last.sku || last.id || ''}_${last.locator || ''}` : '';
+    return `cs_ds_${items.length}_${firstKey}_${lastKey}`;
+  }, [items]);
+
+  // Selected locators for printing (checked = included, unchecked = excluded)
+  const [selectedLocators, setSelectedLocators] = useState<Set<string>>(() => {
+    return new Set(summary.locatorCounts.map(lc => lc.locator));
+  });
+
+  // Track dataset fingerprint to re-initialize selections on newly imported dataset
+  const prevFingerprintRef = useRef<string>(datasetFingerprint);
+  useEffect(() => {
+    if (prevFingerprintRef.current !== datasetFingerprint) {
+      prevFingerprintRef.current = datasetFingerprint;
+      setSelectedLocators(new Set(allLocators));
+      setActivePageIndex(0);
+    }
+  }, [datasetFingerprint, allLocators]);
+
+  // Set of printed locators (persisted per datasetFingerprint)
+  const [printedLocators, setPrintedLocators] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`count_sheet_printed_${datasetFingerprint}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return new Set(parsed);
+        }
+      }
+    } catch {}
+    return new Set<string>();
+  });
+
+  // Reload printed locators when dataset changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`count_sheet_printed_${datasetFingerprint}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setPrintedLocators(new Set(parsed));
+          return;
+        }
+      }
+    } catch {}
+    setPrintedLocators(new Set<string>());
+  }, [datasetFingerprint]);
+
+  // Helper to persist printed locators
+  const savePrintedLocators = (newSet: Set<string>) => {
+    setPrintedLocators(newSet);
+    try {
+      localStorage.setItem(
+        `count_sheet_printed_${datasetFingerprint}`,
+        JSON.stringify(Array.from(newSet))
+      );
+    } catch (e) {
+      console.warn('Could not persist printed locators:', e);
+    }
+  };
+
+  const markLocatorsAsPrinted = (locatorsToMark: string[]) => {
+    if (locatorsToMark.length === 0) return;
+    setPrintedLocators(prev => {
+      const updated = new Set(prev);
+      locatorsToMark.forEach(l => updated.add(l));
+      try {
+        localStorage.setItem(
+          `count_sheet_printed_${datasetFingerprint}`,
+          JSON.stringify(Array.from(updated))
+        );
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Reset confirmation modal & search filter
+  const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
+  const [locatorSearch, setLocatorSearch] = useState<string>('');
+
+  // Filtered locators list for search UI
+  const filteredLocatorCounts = useMemo(() => {
+    if (!locatorSearch.trim()) return summary.locatorCounts;
+    const q = locatorSearch.trim().toLowerCase();
+    return summary.locatorCounts.filter(lc => lc.locator.toLowerCase().includes(q));
+  }, [summary.locatorCounts, locatorSearch]);
+
+  // Selected locators ordered according to original dataset locator sequence
+  const selectedLocatorsArray = useMemo(() => {
+    return allLocators.filter(loc => selectedLocators.has(loc));
+  }, [allLocators, selectedLocators]);
+
   // View state
-  const [selectedLocator, setSelectedLocator] = useState<string>('ALL');
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
   const [zoomScale, setZoomScale] = useState<number>(0.85);
   const [showConfigDrawer, setShowConfigDrawer] = useState<boolean>(true);
@@ -96,6 +209,75 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
   } | null>(null);
 
   const printContainerRef = useRef<HTMLDivElement>(null);
+
+  // Selection handlers
+  const handleToggleLocator = (loc: string) => {
+    setSelectedLocators(prev => {
+      const updated = new Set(prev);
+      if (updated.has(loc)) {
+        updated.delete(loc);
+      } else {
+        updated.add(loc);
+      }
+      return updated;
+    });
+    setActivePageIndex(0);
+  };
+
+  const handleSelectAllLocators = () => {
+    setSelectedLocators(new Set(allLocators));
+    setActivePageIndex(0);
+  };
+
+  const handleClearAllLocators = () => {
+    setSelectedLocators(new Set());
+    setActivePageIndex(0);
+  };
+
+  const handleInvertSelection = () => {
+    setSelectedLocators(prev => {
+      const updated = new Set<string>();
+      allLocators.forEach(loc => {
+        if (!prev.has(loc)) {
+          updated.add(loc);
+        }
+      });
+      return updated;
+    });
+    setActivePageIndex(0);
+  };
+
+  const handleConfirmResetPrintStatus = () => {
+    savePrintedLocators(new Set());
+    setShowResetConfirm(false);
+    setPrintNotice({
+      type: 'info',
+      message: 'Printed status has been reset for all locators.',
+    });
+  };
+
+  // Listen to print completion events
+  useEffect(() => {
+    const handleWindowMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'COUNT_SHEET_PRINTED_SUCCESS') {
+        if (selectedLocatorsArray.length > 0) {
+          markLocatorsAsPrinted(selectedLocatorsArray);
+        }
+      }
+    };
+    const handleAfterPrint = () => {
+      if (selectedLocatorsArray.length > 0) {
+        markLocatorsAsPrinted(selectedLocatorsArray);
+      }
+    };
+
+    window.addEventListener('message', handleWindowMessage);
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('message', handleWindowMessage);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [selectedLocatorsArray]);
 
   // Persist config on update
   const handleUpdateConfig = (newConfig: CountSheetConfig) => {
@@ -141,15 +323,11 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
     handleUpdateConfig(DEFAULT_COUNT_SHEET_CONFIG);
   };
 
-  // Generate paginated pages
+  // Generate paginated pages strictly for selected locators
   const pages: CountSheetPageData[] = useMemo(() => {
-    return paginateCountSheetItems(items, config.rowsPerPage, selectedLocator);
-  }, [items, config.rowsPerPage, selectedLocator]);
-
-  // Generate summary
-  const summary = useMemo(() => {
-    return calculateCountSheetSummary(items, config.rowsPerPage);
-  }, [items, config.rowsPerPage]);
+    if (selectedLocatorsArray.length === 0) return [];
+    return paginateCountSheetItems(items, config.rowsPerPage, selectedLocatorsArray);
+  }, [items, config.rowsPerPage, selectedLocatorsArray]);
 
   // Paper dimensions
   const paperDims = useMemo(() => {
@@ -170,19 +348,26 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
 
   // Handle PDF Generation & Download
   const handleDownloadPdf = async () => {
-    if (isGeneratingPdf || pages.length === 0) return;
+    if (isGeneratingPdf || pages.length === 0 || selectedLocatorsArray.length === 0) return;
     setPrintNotice(null);
     setIsGeneratingPdf(true);
     setPdfProgress({ currentPage: 1, totalPages: pages.length, percent: 10 });
+
+    const locsToMark = [...selectedLocatorsArray];
 
     try {
       await downloadCountSheetPdf(
         items,
         config,
         session,
-        selectedLocator,
+        locsToMark,
         progress => setPdfProgress(progress)
       );
+      markLocatorsAsPrinted(locsToMark);
+      setPrintNotice({
+        type: 'info',
+        message: `PDF generated successfully. ${locsToMark.length} locator${locsToMark.length > 1 ? 's' : ''} marked as PRINTED.`,
+      });
     } catch (err: any) {
       console.error('Download Count Sheet PDF error:', err);
       setPrintNotice({
@@ -197,9 +382,11 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
 
   // Handle printing with multi-strategy support (direct window.print + standalone print window fallback for sandboxed iframes)
   const handlePrint = () => {
+    if (isPrinting || isGeneratingPdf || pages.length === 0 || selectedLocatorsArray.length === 0) return;
     setPrintNotice(null);
     setIsPrinting(true);
 
+    const locsToMark = [...selectedLocatorsArray];
     const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
     // Strategy 1: In standard top-level tab, direct window.print() is preferred
@@ -207,6 +394,7 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
       try {
         window.print();
         setIsPrinting(false);
+        markLocatorsAsPrinted(locsToMark);
         return;
       } catch (err) {
         console.warn('Direct window.print failed, attempting standalone window:', err);
@@ -311,10 +499,18 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
       window.focus();
       try {
         window.print();
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: 'COUNT_SHEET_PRINTED_SUCCESS' }, '*');
+        }
       } catch (err) {
         console.warn('Auto-print error in window:', err);
       }
     }
+    window.onafterprint = function() {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'COUNT_SHEET_PRINTED_SUCCESS' }, '*');
+      }
+    };
     if (document.readyState === 'complete') {
       setTimeout(triggerPrint, 350);
     } else {
@@ -327,6 +523,7 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
 </html>`);
         printWin.document.close();
         setIsPrinting(false);
+        markLocatorsAsPrinted(locsToMark);
         return;
       } catch (writeErr) {
         console.warn('Failed writing to print window:', writeErr);
@@ -339,6 +536,7 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
     // Strategy 3: Fallback direct call
     try {
       window.print();
+      markLocatorsAsPrinted(locsToMark);
     } catch (finalErr: any) {
       console.error('Final window.print call error:', finalErr);
       setPrintNotice({
@@ -388,14 +586,21 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
             </div>
             <span className="text-zinc-300">•</span>
             <div>
-              <span className="text-zinc-400 font-medium">Rows Per Page: </span>
+              <span className="text-zinc-400 font-medium">Selected Locators: </span>
               <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                {selectedLocatorsArray.length} of {allLocators.length}
+              </span>
+            </div>
+            <span className="text-zinc-300">•</span>
+            <div>
+              <span className="text-zinc-400 font-medium">Rows Per Page: </span>
+              <span className="font-mono font-bold text-zinc-900 bg-zinc-100 px-1.5 py-0.5 rounded border border-zinc-200">
                 {config.rowsPerPage}
               </span>
             </div>
             <span className="text-zinc-300">•</span>
             <div>
-              <span className="text-zinc-400 font-medium">Estimated Pages: </span>
+              <span className="text-zinc-400 font-medium">Pages to Print: </span>
               <span className="font-mono font-bold text-zinc-900">{pages.length}</span>
             </div>
           </div>
@@ -432,9 +637,9 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
           <button
             type="button"
             onClick={handleDownloadPdf}
-            disabled={isGeneratingPdf || pages.length === 0}
-            title="Download Count Sheet as a high-resolution, vector PDF document"
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-zinc-900 bg-white hover:bg-zinc-50 border border-zinc-300 hover:border-zinc-400 rounded-lg shadow-2xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            disabled={isGeneratingPdf || pages.length === 0 || selectedLocatorsArray.length === 0}
+            title={selectedLocatorsArray.length === 0 ? 'Select at least one locator to download PDF' : 'Download Count Sheet as a high-resolution, vector PDF document'}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-zinc-900 bg-white hover:bg-zinc-50 border border-zinc-300 hover:border-zinc-400 rounded-lg shadow-2xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {isGeneratingPdf ? (
               <>
@@ -456,9 +661,9 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
           <button
             type="button"
             onClick={handlePrint}
-            disabled={isPrinting || isGeneratingPdf || pages.length === 0}
-            title="Print Count Sheets"
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+            disabled={isPrinting || isGeneratingPdf || pages.length === 0 || selectedLocatorsArray.length === 0}
+            title={selectedLocatorsArray.length === 0 ? 'Select at least one locator to print' : 'Print Count Sheets'}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {isPrinting ? (
               <>
@@ -500,28 +705,153 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
         </div>
       )}
 
-      {/* 2. SUB-TOOLBAR: LOCATOR FILTER & PREVIEW CONTROLS */}
+      {/* 2. FILTER LOCATOR PANEL (CHECKBOX SELECTION & PRINT STATUS TRACKING) */}
+      <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs print:hidden space-y-3">
+        {/* Header: Title, Selected Count, and Action Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <Filter className="w-3.5 h-3.5 text-emerald-700" />
+              <span className="font-extrabold text-emerald-950 text-xs tracking-wider uppercase">
+                FILTER LOCATOR
+              </span>
+            </div>
+            <span className="text-zinc-300 hidden sm:inline">•</span>
+            <div className="text-xs font-semibold text-zinc-700 flex items-center gap-1.5">
+              <span>Selected:</span>
+              <span className="font-mono font-bold text-zinc-950 px-2 py-0.5 bg-zinc-100 rounded-md border border-zinc-200">
+                {selectedLocatorsArray.length} / {allLocators.length} Locators
+              </span>
+              {selectedLocatorsArray.length > 0 ? (
+                <span className="text-[11px] text-zinc-500 font-normal">
+                  ({pages.length} {pages.length === 1 ? 'page' : 'pages'} to print)
+                </span>
+              ) : (
+                <span className="text-[11px] text-amber-600 font-bold">
+                  (0 pages to print — select locators below)
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleSelectAllLocators}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-zinc-700 hover:text-zinc-950 bg-white hover:bg-zinc-50 border border-zinc-300 rounded-md shadow-2xs transition-colors cursor-pointer"
+              title="Include all locators in print"
+            >
+              <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+              <span>SELECT ALL</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleClearAllLocators}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-zinc-700 hover:text-zinc-950 bg-white hover:bg-zinc-50 border border-zinc-300 rounded-md shadow-2xs transition-colors cursor-pointer"
+              title="Deselect all locators"
+            >
+              <Square className="w-3.5 h-3.5 text-zinc-400" />
+              <span>CLEAR ALL</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleInvertSelection}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-zinc-600 hover:text-zinc-900 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-md transition-colors cursor-pointer"
+              title="Invert current locator selection"
+            >
+              <span>INVERT</span>
+            </button>
+            <span className="text-zinc-300 hidden sm:inline">|</span>
+            <button
+              type="button"
+              onClick={() => setShowResetConfirm(true)}
+              disabled={printedLocators.size === 0}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100/80 border border-rose-200 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Reset printed status for all locators"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>RESET PRINT STATUS</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Section title & search bar */}
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+            AVAILABLE LOCATORS
+          </div>
+          {allLocators.length > 6 && (
+            <input
+              type="text"
+              value={locatorSearch}
+              onChange={e => setLocatorSearch(e.target.value)}
+              placeholder="Search locators..."
+              className="px-2.5 py-1 text-xs border border-zinc-300 rounded-md bg-white w-48 focus:ring-1 focus:ring-emerald-500 font-mono"
+            />
+          )}
+        </div>
+
+        {/* Locators Checkbox Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+          {filteredLocatorCounts.map(lc => {
+            const isChecked = selectedLocators.has(lc.locator);
+            const isPrinted = printedLocators.has(lc.locator);
+
+            return (
+              <label
+                key={lc.locator}
+                className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs cursor-pointer select-none transition-all ${
+                  isChecked
+                    ? 'bg-emerald-50/50 border-emerald-400/80 shadow-2xs'
+                    : 'bg-zinc-50/60 border-zinc-200 text-zinc-500 hover:bg-zinc-100/60 hover:border-zinc-300'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => handleToggleLocator(lc.locator)}
+                    className="w-4 h-4 text-emerald-600 rounded border-zinc-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                  />
+                  <div className="min-w-0 flex flex-col">
+                    <span className={`font-mono font-bold truncate text-xs ${isChecked ? 'text-zinc-900' : 'text-zinc-600'}`}>
+                      {lc.locator}
+                    </span>
+                    <span className="text-[10px] text-zinc-400">
+                      {lc.count} items · {lc.pages} {lc.pages === 1 ? 'page' : 'pages'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="shrink-0">
+                  {isPrinted ? (
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      title="This locator has already been printed. It remains selectable for reprinting at any time."
+                    >
+                      <Check className="w-2.5 h-2.5 text-emerald-700 stroke-[3]" />
+                      PRINTED
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-100 text-zinc-400 border border-zinc-200"
+                      title="Not printed yet"
+                    >
+                      NOT PRINTED
+                    </span>
+                  )}
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. SUB-TOOLBAR: PREVIEW CONTROLS */}
       <div className="bg-white border border-zinc-200 rounded-xl px-4 py-2.5 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs print:hidden">
-        {/* Locator Filter */}
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-zinc-700 text-[11px] uppercase tracking-wider">
-            FILTER LOCATOR:
-          </span>
-          <select
-            value={selectedLocator}
-            onChange={e => {
-              setSelectedLocator(e.target.value);
-              setActivePageIndex(0);
-            }}
-            className="px-2.5 py-1.5 border border-zinc-300 rounded-lg bg-white font-medium text-xs text-zinc-900 focus:ring-1 focus:ring-emerald-500"
-          >
-            <option value="ALL">All Locators ({summary.totalLocators} locators, {summary.estimatedPages} pages)</option>
-            {summary.locatorCounts.map(lc => (
-              <option key={lc.locator} value={lc.locator}>
-                {lc.locator} — {lc.count} items ({lc.pages} {lc.pages === 1 ? 'page' : 'pages'})
-              </option>
-            ))}
-          </select>
+        <div className="text-xs font-semibold text-zinc-600">
+          Showing <span className="font-mono font-bold text-zinc-900">{pages.length}</span> {pages.length === 1 ? 'sheet' : 'sheets'} across <span className="font-mono font-bold text-zinc-900">{selectedLocatorsArray.length}</span> {selectedLocatorsArray.length === 1 ? 'locator' : 'locators'}
         </div>
 
         {/* View mode & Zoom controls */}
@@ -647,10 +977,29 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
           } flex flex-col items-center justify-center p-6 bg-zinc-200/70 rounded-xl border border-zinc-300/80 overflow-x-auto print:hidden`}
         >
           {pages.length === 0 ? (
-            <div className="p-12 text-center text-zinc-500">
+            <div className="p-12 text-center text-zinc-500 max-w-md">
               <FileSpreadsheet className="w-12 h-12 mx-auto text-zinc-300 mb-3" />
-              <p className="font-bold text-sm">No items found for the selected locator.</p>
-              <p className="text-xs text-zinc-400 mt-1">Please select "All Locators" or check your inventory items.</p>
+              {selectedLocatorsArray.length === 0 ? (
+                <>
+                  <p className="font-bold text-sm text-zinc-800">No Locators Selected for Printing</p>
+                  <p className="text-xs text-zinc-400 mt-1 mb-4">
+                    All locators are currently unchecked. Please check one or more locators in the FILTER LOCATOR panel above to preview and print Count Sheets.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllLocators}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>SELECT ALL LOCATORS</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-sm text-zinc-800">No items found for the selected locators.</p>
+                  <p className="text-xs text-zinc-400 mt-1">Please check your inventory items or import an Excel file.</p>
+                </>
+              )}
             </div>
           ) : viewMode === 'single' ? (
             // Single page view
@@ -755,6 +1104,44 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
           </div>
         ))}
       </div>
+
+      {/* 5. RESET PRINT STATUS CONFIRMATION MODAL */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150 print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-5 border border-zinc-200">
+            <div className="flex items-center gap-3 text-amber-600 mb-3">
+              <div className="p-2 bg-amber-50 rounded-lg border border-amber-200">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wide">
+                Reset Print Status
+              </h3>
+            </div>
+            <p className="text-xs font-semibold text-zinc-800 leading-relaxed mb-2">
+              Reset printed status for all locators?
+            </p>
+            <p className="text-[11px] text-zinc-500 leading-relaxed mb-5">
+              This will clear all "PRINTED" indicators for this dataset. Your Excel inventory data, items, and Count Sheet layout settings will not be affected.
+            </p>
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-zinc-700 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200/80 rounded-lg transition-colors cursor-pointer"
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmResetPrintStatus}
+                className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+              >
+                RESET
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
