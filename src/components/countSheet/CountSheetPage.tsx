@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { CountSheetConfig, CountSheetPageData, InventorySession } from '../../types';
-import { generateBarcodeSvgString } from '../../utils/barcode';
+import { CountSheetColumnId, CountSheetConfig, CountSheetPageData, InventorySession } from '../../types';
+import { generateBarcodeSvgString, generateLocatorBarcodeSvgString } from '../../utils/barcode';
 import { getCountSheetPaperDimensions } from '../../utils/countSheetLayoutEngine';
 
 interface CountSheetPageProps {
@@ -27,30 +27,33 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
     );
   }, [config.paperSize, config.customWidthMm, config.customHeightMm, config.orientation]);
 
-  // Generate upper-right locator barcode SVG
+  // Generate upper-right locator barcode SVG using scanner-optimized generator
   const locatorBarcodeSvg = useMemo(() => {
     if (!config.showLocatorBarcode || !pageData.locator || pageData.locator === 'UNASSIGNED') {
       return '';
     }
     const cleanLocator = String(pageData.locator).trim();
-    return generateBarcodeSvgString(
+    return generateLocatorBarcodeSvgString(
       cleanLocator,
       config.locatorBarcodeFormat || 'CODE128',
-      Math.max(18, Math.round(config.locatorBarcodeHeightMm * 2.8 * scale)),
+      (config.locatorBarcodeHeightMm || 11) * scale,
+      config.locatorBarcodeWidthScale || 1.5,
       config.showLocatorBarcodeText !== false,
-      Math.max(7, Math.round(8 * scale))
+      Math.max(6, Math.round((config.locatorBarcodeTextSizePt || 8) * scale))
     );
   }, [
     config.showLocatorBarcode,
     config.locatorBarcodeFormat,
     config.locatorBarcodeHeightMm,
+    config.locatorBarcodeWidthScale,
     config.showLocatorBarcodeText,
+    config.locatorBarcodeTextSizePt,
     pageData.locator,
     scale,
   ]);
 
   // Compute number of rows to render
-  const totalRows = config.rowsPerPage || 20;
+  const totalRows = config.rowsPerPage || 15;
   const items = pageData.items || [];
   const emptyRowsCount = config.emptyRowsToFillPage !== false
     ? Math.max(0, totalRows - items.length)
@@ -81,11 +84,58 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
     countMm: 34,
   };
 
+  // Reorderable Columns
+  const activeColumns = useMemo<CountSheetColumnId[]>(() => {
+    const defaultOrder: CountSheetColumnId[] = ['sku', 'barcode', 'description', 'count'];
+    const order = config.columnOrder && config.columnOrder.length > 0
+      ? config.columnOrder
+      : defaultOrder;
+
+    return order.filter(colId => {
+      if (config.columnVisibility && config.columnVisibility[colId] === false) {
+        return false;
+      }
+      return true;
+    });
+  }, [config.columnOrder, config.columnVisibility]);
+
+  // Table Border & Line Calculations
+  const borderEnabled = config.tableBorderEnabled !== false;
+  const tableBorderStyle = config.tableBorderStyle || 'solid';
+  const tableBorderColor = config.tableBorderColor || '#27272a';
+  const outerBorderWidthPx = borderEnabled && config.tableOuterBorder !== false
+    ? (config.tableBorderWidthPx ?? 1.5)
+    : 0;
+
+  const innerHorizontalBorder = borderEnabled && config.tableInnerHorizontalLines !== false
+    ? `${config.tableHorizontalLineWidthPx ?? 1}px ${tableBorderStyle} ${tableBorderColor}`
+    : 'none';
+
+  const innerVerticalBorder = borderEnabled && config.tableInnerVerticalLines !== false
+    ? `${config.tableVerticalLineWidthPx ?? 1}px ${tableBorderStyle} ${tableBorderColor}`
+    : 'none';
+
+  const headerBorderBottom = borderEnabled && config.tableHeaderBorder !== false
+    ? `${config.tableHeaderBorderWidthPx ?? 2}px ${tableBorderStyle} ${tableBorderColor}`
+    : 'none';
+
+  const headerAlignClass = config.tableHeaderAlign === 'center'
+    ? 'text-center'
+    : config.tableHeaderAlign === 'right'
+    ? 'text-right'
+    : 'text-left';
+
+  const bodyAlignClass = config.tableBodyAlign === 'center'
+    ? 'text-center'
+    : config.tableBodyAlign === 'right'
+    ? 'text-right'
+    : 'text-left';
+
   return (
     <div
       className={`bg-white text-zinc-950 box-border relative flex flex-col justify-between ${
         isPrint
-          ? 'print-page break-after-page'
+          ? 'print-page'
           : 'shadow-md rounded-xs border border-zinc-200'
       }`}
       style={{
@@ -101,8 +151,7 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
         paddingRight: `${config.marginRightMm * scale}mm`,
         boxSizing: 'border-box',
         overflow: 'hidden',
-        pageBreakAfter: 'always',
-        breakAfter: 'page',
+        fontFamily: bodyFont,
       }}
     >
       {/* 1. TOP HEADER SECTION */}
@@ -161,9 +210,17 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
           </div>
         </div>
 
-        {/* UPPER RIGHT: LOCATOR IDENTIFICATION & LOCATOR BARCODE */}
-        <div className="shrink-0 flex flex-col items-end text-right pl-3 border-l border-zinc-300">
-          <div className="flex items-center gap-1.5 justify-end">
+        {/* UPPER RIGHT: LOCATOR IDENTIFICATION & SCANNER-READABLE LOCATOR BARCODE */}
+        <div
+          className={`shrink-0 flex flex-col pl-3 border-l border-zinc-300 ${
+            config.locatorBarcodeAlign === 'left'
+              ? 'items-start text-left'
+              : config.locatorBarcodeAlign === 'center'
+              ? 'items-center text-center'
+              : 'items-end text-right'
+          }`}
+        >
+          <div className="flex items-center gap-1.5">
             <span
               className="font-bold text-zinc-500 uppercase tracking-wider"
               style={{ fontSize: `${Math.max(7, 8 * scale)}pt` }}
@@ -181,10 +238,10 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
             </span>
           </div>
 
-          {/* Scannable Locator Barcode */}
+          {/* Scannable Locator Barcode with guaranteed optical quiet zones */}
           {locatorBarcodeSvg && (
             <div
-              className="mt-1 flex flex-col items-end overflow-hidden max-w-[55mm]"
+              className="mt-1 flex flex-col bg-white"
               title={`Locator Barcode: ${pageData.locator}`}
               dangerouslySetInnerHTML={{ __html: locatorBarcodeSvg }}
             />
@@ -208,67 +265,103 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
       {/* 2. TABLE CONTAINER */}
       <div className="flex-1 w-full flex flex-col overflow-hidden">
         <table
-          className="w-full border-collapse border border-zinc-950 text-left"
+          className="w-full border-collapse text-left"
           style={{
-            borderWidth: `${config.borderWidthPx}px`,
+            border: outerBorderWidthPx > 0 ? `${outerBorderWidthPx}px ${tableBorderStyle} ${tableBorderColor}` : 'none',
             fontFamily: bodyFont,
           }}
         >
-          {/* Table Header: SKU | BARCODE | DESCRIPTION | COUNT */}
+          {/* Table Header: Dynamically ordered based on columnOrder */}
           <thead>
-            <tr className="bg-zinc-100 border-b-2 border-zinc-950">
+            <tr
+              className="bg-zinc-100"
+              style={{
+                borderBottom: headerBorderBottom,
+              }}
+            >
               {config.showRowNumbers && (
                 <th
-                  className="border-r border-zinc-400 px-1 py-1 text-center font-extrabold uppercase text-zinc-700"
+                  className="px-1 py-1 text-center font-extrabold uppercase text-zinc-700"
                   style={{
                     width: `${6 * scale}mm`,
                     fontSize: `${Math.max(7, (config.headerFontSizePt - 1.5) * scale)}pt`,
+                    borderRight: innerVerticalBorder,
                   }}
                 >
                   #
                 </th>
               )}
 
-              <th
-                className="border-r border-zinc-400 px-2 py-1 font-black uppercase text-zinc-950 tracking-wider"
-                style={{
-                  width: `${colWidths.skuMm * scale}mm`,
-                  fontSize: `${Math.max(7, config.headerFontSizePt * scale)}pt`,
-                }}
-              >
-                SKU
-              </th>
+              {activeColumns.map((colId, colIdx) => {
+                const isLast = colIdx === activeColumns.length - 1;
+                const rightBorder = isLast ? 'none' : innerVerticalBorder;
 
-              <th
-                className="border-r border-zinc-400 px-2 py-1 font-black uppercase text-zinc-950 tracking-wider text-center"
-                style={{
-                  width: `${colWidths.barcodeMm * scale}mm`,
-                  fontSize: `${Math.max(7, config.headerFontSizePt * scale)}pt`,
-                }}
-              >
-                BARCODE
-              </th>
+                if (colId === 'sku') {
+                  return (
+                    <th
+                      key="th-sku"
+                      className={`px-2 py-1 font-black uppercase text-zinc-950 tracking-wider ${headerAlignClass}`}
+                      style={{
+                        width: `${colWidths.skuMm * scale}mm`,
+                        fontSize: `${Math.max(7, config.headerFontSizePt * scale)}pt`,
+                        borderRight: rightBorder,
+                      }}
+                    >
+                      SKU
+                    </th>
+                  );
+                }
 
-              <th
-                className="border-r border-zinc-400 px-2 py-1 font-black uppercase text-zinc-950 tracking-wider"
-                style={{
-                  width: `${colWidths.descMm * scale}mm`,
-                  fontSize: `${Math.max(7, config.headerFontSizePt * scale)}pt`,
-                }}
-              >
-                DESCRIPTION
-              </th>
+                if (colId === 'barcode') {
+                  return (
+                    <th
+                      key="th-barcode"
+                      className={`px-2 py-1 font-black uppercase text-zinc-950 tracking-wider text-center`}
+                      style={{
+                        width: `${colWidths.barcodeMm * scale}mm`,
+                        fontSize: `${Math.max(7, config.headerFontSizePt * scale)}pt`,
+                        borderRight: rightBorder,
+                      }}
+                    >
+                      BARCODE
+                    </th>
+                  );
+                }
 
-              {/* COUNT COLUMN: MANDATED FOR MANUAL HANDWRITING */}
-              <th
-                className="px-2 py-1 font-black uppercase text-zinc-950 tracking-wider text-center bg-zinc-200/60"
-                style={{
-                  width: `${colWidths.countMm * scale}mm`,
-                  fontSize: `${Math.max(8, (config.countHeaderFontSizePt || 9) * scale)}pt`,
-                }}
-              >
-                COUNT
-              </th>
+                if (colId === 'description') {
+                  return (
+                    <th
+                      key="th-desc"
+                      className={`px-2 py-1 font-black uppercase text-zinc-950 tracking-wider ${headerAlignClass}`}
+                      style={{
+                        width: `${colWidths.descMm * scale}mm`,
+                        fontSize: `${Math.max(7, config.headerFontSizePt * scale)}pt`,
+                        borderRight: rightBorder,
+                      }}
+                    >
+                      DESCRIPTION
+                    </th>
+                  );
+                }
+
+                if (colId === 'count') {
+                  return (
+                    <th
+                      key="th-count"
+                      className="px-2 py-1 font-black uppercase text-zinc-950 tracking-wider text-center bg-zinc-200/60"
+                      style={{
+                        width: `${colWidths.countMm * scale}mm`,
+                        fontSize: `${Math.max(8, (config.countHeaderFontSizePt || 9) * scale)}pt`,
+                        borderRight: rightBorder,
+                      }}
+                    >
+                      COUNT
+                    </th>
+                  );
+                }
+
+                return null;
+              })}
             </tr>
           </thead>
 
@@ -292,98 +385,128 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
               return (
                 <tr
                   key={item.id || `row-${idx}`}
-                  className="border-b border-zinc-300 hover:bg-zinc-50 transition-colors"
+                  className="hover:bg-zinc-50 transition-colors"
                   style={{
                     height: `${config.rowHeightMm * scale}mm`,
                     maxHeight: `${config.rowHeightMm * scale}mm`,
+                    borderBottom: innerHorizontalBorder,
                   }}
                 >
                   {/* Row Number */}
                   {config.showRowNumbers && (
                     <td
-                      className="border-r border-zinc-300 px-1 text-center font-mono font-bold text-zinc-500 text-[9px]"
-                      style={{ height: `${config.rowHeightMm * scale}mm` }}
+                      className="px-1 text-center font-mono font-bold text-zinc-500 text-[9px]"
+                      style={{
+                        height: `${config.rowHeightMm * scale}mm`,
+                        borderRight: innerVerticalBorder,
+                      }}
                     >
                       {rowNum}
                     </td>
                   )}
 
-                  {/* SKU */}
-                  <td
-                    className="border-r border-zinc-300 px-2 font-mono font-bold text-zinc-950 truncate"
-                    style={{
-                      width: `${colWidths.skuMm * scale}mm`,
-                      fontSize: `${Math.max(7, config.skuFontSizePt * scale)}pt`,
-                      height: `${config.rowHeightMm * scale}mm`,
-                    }}
-                  >
-                    {item.sku || '-'}
-                  </td>
+                  {/* Dynamically Ordered Columns */}
+                  {activeColumns.map((colId, colIdx) => {
+                    const isLast = colIdx === activeColumns.length - 1;
+                    const rightBorder = isLast ? 'none' : innerVerticalBorder;
 
-                  {/* BARCODE (Graphic + Text or Text Only) */}
-                  <td
-                    className="border-r border-zinc-300 px-1 py-0.5 overflow-hidden text-center"
-                    style={{
-                      width: `${colWidths.barcodeMm * scale}mm`,
-                      height: `${config.rowHeightMm * scale}mm`,
-                    }}
-                  >
-                    {barcodeSvg ? (
-                      <div
-                        className="w-full flex flex-col items-center justify-center overflow-hidden max-h-full"
-                        dangerouslySetInnerHTML={{ __html: barcodeSvg }}
-                      />
-                    ) : (
-                      <span
-                        className="font-mono font-semibold text-zinc-900 tracking-wider"
-                        style={{
-                          fontSize: `${Math.max(7, config.barcodeTextFontSizePt * scale)}pt`,
-                        }}
-                      >
-                        {codeVal || '-'}
-                      </span>
-                    )}
-                  </td>
+                    if (colId === 'sku') {
+                      return (
+                        <td
+                          key={`cell-sku-${idx}`}
+                          className={`px-2 font-mono font-bold text-zinc-950 truncate ${bodyAlignClass}`}
+                          style={{
+                            width: `${colWidths.skuMm * scale}mm`,
+                            fontSize: `${Math.max(7, config.skuFontSizePt * scale)}pt`,
+                            height: `${config.rowHeightMm * scale}mm`,
+                            borderRight: rightBorder,
+                          }}
+                        >
+                          {item.sku || '-'}
+                        </td>
+                      );
+                    }
 
-                  {/* DESCRIPTION */}
-                  <td
-                    className="border-r border-zinc-300 px-2 py-0.5 text-zinc-900 font-medium leading-tight"
-                    style={{
-                      width: `${colWidths.descMm * scale}mm`,
-                      fontSize: `${Math.max(7, config.descFontSizePt * scale)}pt`,
-                      height: `${config.rowHeightMm * scale}mm`,
-                    }}
-                  >
-                    <div
-                      className="overflow-hidden uppercase font-semibold"
-                      style={{
-                        display: config.wrapDescription ? '-webkit-box' : 'block',
-                        WebkitLineClamp: config.wrapDescription ? config.descMaxLines : 1,
-                        WebkitBoxOrient: 'vertical',
-                        lineHeight: config.descLineHeight,
-                        whiteSpace: config.wrapDescription ? 'normal' : 'nowrap',
-                        textOverflow: 'ellipsis',
-                      }}
-                      title={item.description}
-                    >
-                      {item.description || '-'}
-                    </div>
-                  </td>
+                    if (colId === 'barcode') {
+                      return (
+                        <td
+                          key={`cell-barcode-${idx}`}
+                          className="px-1 py-0.5 overflow-hidden text-center"
+                          style={{
+                            width: `${colWidths.barcodeMm * scale}mm`,
+                            height: `${config.rowHeightMm * scale}mm`,
+                            borderRight: rightBorder,
+                          }}
+                        >
+                          {barcodeSvg ? (
+                            <div
+                              className="w-full flex flex-col items-center justify-center overflow-hidden max-h-full"
+                              dangerouslySetInnerHTML={{ __html: barcodeSvg }}
+                            />
+                          ) : (
+                            <span
+                              className="font-mono font-semibold text-zinc-900 tracking-wider"
+                              style={{
+                                fontSize: `${Math.max(7, config.barcodeTextFontSizePt * scale)}pt`,
+                              }}
+                            >
+                              {codeVal || '-'}
+                            </span>
+                          )}
+                        </td>
+                      );
+                    }
 
-                  {/* COUNT COLUMN: MUST BE COMPLETELY BLANK FOR MANUAL ENTRY */}
-                  <td
-                    className="px-2 py-0.5 text-center relative bg-white"
-                    style={{
-                      width: `${colWidths.countMm * scale}mm`,
-                      height: `${config.rowHeightMm * scale}mm`,
-                    }}
-                  >
-                    {/* Empty cell for physical inventory handwriting */}
-                    <div className="w-full h-full flex items-center justify-center pointer-events-none select-none">
-                      {/* Optional subtle dotted line guideline for neat handwriting */}
-                      <span className="w-4/5 border-b border-zinc-200/80 inline-block h-2" />
-                    </div>
-                  </td>
+                    if (colId === 'description') {
+                      return (
+                        <td
+                          key={`cell-desc-${idx}`}
+                          className={`px-2 py-0.5 text-zinc-900 font-medium leading-tight ${bodyAlignClass}`}
+                          style={{
+                            width: `${colWidths.descMm * scale}mm`,
+                            fontSize: `${Math.max(7, config.descFontSizePt * scale)}pt`,
+                            height: `${config.rowHeightMm * scale}mm`,
+                            borderRight: rightBorder,
+                          }}
+                        >
+                          <div
+                            className="overflow-hidden uppercase font-semibold"
+                            style={{
+                              display: config.wrapDescription ? '-webkit-box' : 'block',
+                              WebkitLineClamp: config.wrapDescription ? config.descMaxLines : 1,
+                              WebkitBoxOrient: 'vertical',
+                              lineHeight: config.descLineHeight,
+                              whiteSpace: config.wrapDescription ? 'normal' : 'nowrap',
+                              textOverflow: 'ellipsis',
+                            }}
+                            title={item.description}
+                          >
+                            {item.description || '-'}
+                          </div>
+                        </td>
+                      );
+                    }
+
+                    if (colId === 'count') {
+                      return (
+                        <td
+                          key={`cell-count-${idx}`}
+                          className="px-2 py-0.5 text-center relative bg-white"
+                          style={{
+                            width: `${colWidths.countMm * scale}mm`,
+                            height: `${config.rowHeightMm * scale}mm`,
+                            borderRight: rightBorder,
+                          }}
+                        >
+                          <div className="w-full h-full flex items-center justify-center pointer-events-none select-none">
+                            <span className="w-4/5 border-b border-zinc-200/80 inline-block h-2" />
+                          </div>
+                        </td>
+                      );
+                    }
+
+                    return null;
+                  })}
                 </tr>
               );
             })}
@@ -394,52 +517,91 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
               return (
                 <tr
                   key={`empty-${emptyIdx}`}
-                  className="border-b border-zinc-300 bg-white"
+                  className="bg-white"
                   style={{
                     height: `${config.rowHeightMm * scale}mm`,
                     maxHeight: `${config.rowHeightMm * scale}mm`,
+                    borderBottom: innerHorizontalBorder,
                   }}
                 >
                   {config.showRowNumbers && (
                     <td
-                      className="border-r border-zinc-300 px-1 text-center font-mono font-bold text-zinc-400 text-[9px]"
-                      style={{ height: `${config.rowHeightMm * scale}mm` }}
+                      className="px-1 text-center font-mono font-bold text-zinc-400 text-[9px]"
+                      style={{
+                        height: `${config.rowHeightMm * scale}mm`,
+                        borderRight: innerVerticalBorder,
+                      }}
                     >
                       {rowNum}
                     </td>
                   )}
-                  <td
-                    className="border-r border-zinc-300 px-2"
-                    style={{
-                      width: `${colWidths.skuMm * scale}mm`,
-                      height: `${config.rowHeightMm * scale}mm`,
-                    }}
-                  />
-                  <td
-                    className="border-r border-zinc-300 px-1"
-                    style={{
-                      width: `${colWidths.barcodeMm * scale}mm`,
-                      height: `${config.rowHeightMm * scale}mm`,
-                    }}
-                  />
-                  <td
-                    className="border-r border-zinc-300 px-2"
-                    style={{
-                      width: `${colWidths.descMm * scale}mm`,
-                      height: `${config.rowHeightMm * scale}mm`,
-                    }}
-                  />
-                  <td
-                    className="px-2 text-center"
-                    style={{
-                      width: `${colWidths.countMm * scale}mm`,
-                      height: `${config.rowHeightMm * scale}mm`,
-                    }}
-                  >
-                    <div className="w-full h-full flex items-center justify-center pointer-events-none select-none">
-                      <span className="w-4/5 border-b border-zinc-200/80 inline-block h-2" />
-                    </div>
-                  </td>
+
+                  {activeColumns.map((colId, colIdx) => {
+                    const isLast = colIdx === activeColumns.length - 1;
+                    const rightBorder = isLast ? 'none' : innerVerticalBorder;
+
+                    if (colId === 'sku') {
+                      return (
+                        <td
+                          key={`empty-sku-${emptyIdx}`}
+                          className="px-2"
+                          style={{
+                            width: `${colWidths.skuMm * scale}mm`,
+                            height: `${config.rowHeightMm * scale}mm`,
+                            borderRight: rightBorder,
+                          }}
+                        />
+                      );
+                    }
+
+                    if (colId === 'barcode') {
+                      return (
+                        <td
+                          key={`empty-barcode-${emptyIdx}`}
+                          className="px-1"
+                          style={{
+                            width: `${colWidths.barcodeMm * scale}mm`,
+                            height: `${config.rowHeightMm * scale}mm`,
+                            borderRight: rightBorder,
+                          }}
+                        />
+                      );
+                    }
+
+                    if (colId === 'description') {
+                      return (
+                        <td
+                          key={`empty-desc-${emptyIdx}`}
+                          className="px-2"
+                          style={{
+                            width: `${colWidths.descMm * scale}mm`,
+                            height: `${config.rowHeightMm * scale}mm`,
+                            borderRight: rightBorder,
+                          }}
+                        />
+                      );
+                    }
+
+                    if (colId === 'count') {
+                      return (
+                        <td
+                          key={`empty-count-${emptyIdx}`}
+                          className="px-2 text-center"
+                          style={{
+                            width: `${colWidths.countMm * scale}mm`,
+                            height: `${config.rowHeightMm * scale}mm`,
+                            borderRight: rightBorder,
+                          }}
+                        >
+                          <div className="w-full h-full flex items-center justify-center pointer-events-none select-none">
+                            <span className="w-4/5 border-b border-zinc-200/80 inline-block h-2" />
+                          </div>
+                        </td>
+                      );
+                    }
+
+                    return null;
+                  })}
                 </tr>
               );
             })}
@@ -474,6 +636,14 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* 4. PRINTABLE DOCUMENT FOOTER */}
+      <div
+        className="w-full text-center mt-1 pt-0.5 select-none pointer-events-none font-sans font-medium text-[8px] tracking-wide text-zinc-900"
+        style={{ opacity: 0.3 }}
+      >
+        Powered by: DECStudioHub
+      </div>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileSpreadsheet, Download, Sparkles, AlertCircle, Building2, Calendar, User, FileText } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, Download, Sparkles, AlertCircle, AlertTriangle, Building2, Calendar, User, FileText, CheckCircle2 } from 'lucide-react';
 import { InventoryItem, InventorySession, ValidationSummary } from '../types';
 import { parseExcelFile, downloadSampleExcelTemplate, SAMPLE_DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
 
@@ -17,6 +17,12 @@ export const Step1Import: React.FC<Step1ImportProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [largeFileWarning, setLargeFileWarning] = useState<{
+    items: InventoryItem[];
+    summary: ValidationSummary;
+    filename: string;
+    rowCount: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFile = async (file: File) => {
@@ -38,6 +44,18 @@ export const Step1Import: React.FC<Step1ImportProps> = ({
 
       if (result.items.length === 0) {
         setErrorMessage('No inventory items found in the file. Please check that rows exist.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Large dataset warning for >500 rows (Non-blocking notice, source data stays 100% intact)
+      if (result.items.length > 500) {
+        setLargeFileWarning({
+          items: result.items,
+          summary: result.summary,
+          filename: file.name,
+          rowCount: result.items.length,
+        });
         setIsLoading(false);
         return;
       }
@@ -322,6 +340,74 @@ export const Step1Import: React.FC<Step1ImportProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Large Dataset Warning Modal (>500 rows) - NON-BLOCKING */}
+      {largeFileWarning && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-amber-200 space-y-4 animate-scaleUp">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-black text-zinc-900">
+                    Large Dataset Detected
+                  </h3>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-mono font-bold text-xs rounded-full">
+                    {largeFileWarning.rowCount} Rows
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-500 mt-1">
+                  File: <strong className="text-zinc-800">{largeFileWarning.filename}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-2 text-xs text-amber-950">
+              <p className="font-semibold">
+                Your spreadsheet contains <strong>{largeFileWarning.rowCount} items</strong> (greater than 500 rows).
+              </p>
+              <ul className="list-disc pl-4 space-y-1 text-zinc-700">
+                <li>
+                  <strong>Not Blocked:</strong> The system will process and retain all {largeFileWarning.rowCount} items without truncating.
+                </li>
+                <li>
+                  <strong>Raw Data Untouched:</strong> Your original Excel spreadsheet file is read-only and remains 100% unaltered.
+                </li>
+                <li>
+                  <strong>Performance Notice:</strong> Generating high-density barcodes and multi-page preview sheets may take a few moments. We recommend grouping by locator when printing.
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => setLargeFileWarning(null)}
+                className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancel & Pick Another File
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDataLoaded(
+                    largeFileWarning.items,
+                    largeFileWarning.summary,
+                    largeFileWarning.filename
+                  );
+                  setLargeFileWarning(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs cursor-pointer transition-colors flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Continue with All {largeFileWarning.rowCount} Rows</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

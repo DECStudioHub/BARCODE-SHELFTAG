@@ -11,6 +11,8 @@ import {
   Layers,
   ClipboardList,
   TableProperties,
+  HelpCircle,
+  Database,
 } from 'lucide-react';
 import { AppStep, InventorySession, SystemSettings, AppModuleId } from '../types';
 import { getPaletteTheme } from '../utils/theme';
@@ -25,6 +27,8 @@ interface NavbarProps {
   session: InventorySession;
   settings: SystemSettings;
   onReset: () => void;
+  onOpenWelcome?: () => void;
+  onOpenBackup?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,6 +41,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   session,
   settings,
   onReset,
+  onOpenWelcome,
+  onOpenBackup,
 }) => {
   const activeTheme = getPaletteTheme(settings.paletteId, settings.customPrimaryColor);
 
@@ -154,6 +160,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
+            {/* System Backup Action */}
+            {onOpenBackup && (
+              <button
+                type="button"
+                onClick={onOpenBackup}
+                title="System Backup & Restore (JSON)"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors border border-zinc-200 cursor-pointer"
+              >
+                <Database className="w-3.5 h-3.5 text-emerald-700" />
+                <span className="hidden sm:inline">Backup</span>
+              </button>
+            )}
+
             {/* Quick Settings Icon Button */}
             <button
               type="button"
@@ -171,6 +190,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Settings className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Settings</span>
             </button>
+
+            {/* Welcome / Guide Help Button */}
+            {onOpenWelcome && (
+              <button
+                type="button"
+                onClick={onOpenWelcome}
+                title="Open System Quick Guide & Overview"
+                className="inline-flex items-center justify-center p-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors border border-transparent hover:border-zinc-200 cursor-pointer"
+              >
+                <HelpCircle className="w-4 h-4 text-zinc-500" />
+              </button>
+            )}
 
             {itemCount > 0 && (
               <button

@@ -116,6 +116,17 @@ export const PPTagCard: React.FC<PPTagCardProps> = ({
               </div>
             )}
           </div>
+
+          {/* Printable Document Branding Footer */}
+          <div
+            className="w-full text-center font-sans font-medium text-zinc-900 select-none pointer-events-none pt-0.5 tracking-tight leading-none"
+            style={{
+              opacity: 0.3,
+              fontSize: `${Math.max(5, 5.5 * scale)}px`,
+            }}
+          >
+            Powered by: DECStudioHub
+          </div>
         </div>
       </div>
     </div>

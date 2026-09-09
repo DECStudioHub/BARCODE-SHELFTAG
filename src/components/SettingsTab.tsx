@@ -16,6 +16,9 @@ import {
   CheckCircle2,
   Tag,
   Link as LinkIcon,
+  Database,
+  Download,
+  FileJson,
 } from 'lucide-react';
 import {
   SystemSettings,
@@ -30,6 +33,8 @@ import {
   getPaletteTheme,
 } from '../utils/theme';
 import { DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
+import { BackupRestoreModal } from './BackupRestoreModal';
+import { exportSystemBackup } from '../utils/systemBackup';
 
 interface SettingsTabProps {
   settings: SystemSettings;
@@ -63,6 +68,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [customHexInput, setCustomHexInput] = useState(settings.customPrimaryColor || '#047857');
   const [urlLogoInput, setUrlLogoInput] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: 'success' | 'info' } | null>(null);
+  const [showBackupModal, setShowBackupModal] = useState(false);
 
   // Confirm dialog state for data resets
   const [confirmAction, setConfirmAction] = useState<{
@@ -945,6 +951,52 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             </div>
           </div>
 
+          {/* Backup & Restore Section (Mandatory Feature) */}
+          <div className="p-5 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                  <Database className="w-5 h-5 text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-zinc-900">
+                    System-Wide Backup & Restore (JSON)
+                  </h3>
+                  <p className="text-xs text-zinc-600">
+                    Export all inventory items, Count Sheet presets & table settings, custom logos, and layout configurations.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      exportSystemBackup();
+                      showNotification('System backup downloaded successfully!');
+                    } catch (e: any) {
+                      alert(e.message);
+                    }
+                  }}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs cursor-pointer transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Backup (.json)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBackupModal(true)}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-zinc-800 bg-white hover:bg-zinc-100 border border-zinc-300 rounded-lg shadow-2xs cursor-pointer transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5 text-zinc-600" />
+                  <span>Restore from File...</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Reset Action Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-zinc-100">
             {/* 1. Clear Inventory Data */}
@@ -1149,6 +1201,15 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* Backup & Restore Modal */}
+      <BackupRestoreModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+        onRestoreComplete={() => {
+          showNotification('System backup restored successfully!');
+        }}
+      />
     </div>
   );
 };

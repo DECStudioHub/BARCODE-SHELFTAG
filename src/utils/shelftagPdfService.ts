@@ -276,6 +276,29 @@ export async function generateShelftagPdf(
       const unitText = (item.unit || 'PER PC').toUpperCase();
       doc.text(unitText, uX, uY, { align: 'right' });
     }
+
+    // Tag Branding Footer: Powered by: DECStudioHub (30% opacity inside tag boundary)
+    try {
+      if (typeof (doc as any).GState === 'function') {
+        (doc as any).saveGraphicsState();
+        (doc as any).setGState(new (doc as any).GState({ opacity: 0.3 }));
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Powered by: DECStudioHub', x + tagWidth - 1, y + tagHeight - 0.7, { align: 'right' });
+        (doc as any).restoreGraphicsState();
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4.5);
+        doc.setTextColor(179, 179, 179);
+        doc.text('Powered by: DECStudioHub', x + tagWidth - 1, y + tagHeight - 0.7, { align: 'right' });
+      }
+    } catch {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(4.5);
+      doc.setTextColor(179, 179, 179);
+      doc.text('Powered by: DECStudioHub', x + tagWidth - 1, y + tagHeight - 0.7, { align: 'right' });
+    }
   }
 
   return doc;

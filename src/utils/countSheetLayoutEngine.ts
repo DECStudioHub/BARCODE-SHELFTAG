@@ -29,12 +29,12 @@ export const DEFAULT_COUNT_SHEET_CONFIG: CountSheetConfig = {
   customWidthMm: 210,
   customHeightMm: 297,
   orientation: 'portrait',
-  rowsPerPage: 20, // Default 20 rows as mandated
+  rowsPerPage: 15, // Default 15 rows as requested
   marginTopMm: 8,
   marginBottomMm: 8,
   marginLeftMm: 8,
   marginRightMm: 8,
-  rowHeightMm: 11, // Comfortable handwriting height
+  rowHeightMm: 12, // Default 12 mm height as requested
   tableWidthPercent: 100,
   columnWidths: {
     skuMm: 28,
@@ -70,16 +70,39 @@ export const DEFAULT_COUNT_SHEET_CONFIG: CountSheetConfig = {
   showBarcodeValueText: true,
   barcodeAlign: 'center',
 
-  // Locator Barcode (Upper-Right)
+  // Locator Barcode (Upper-Right) - Scanner Optimized Defaults
   showLocatorBarcode: true,
   locatorBarcodeHeightMm: 11,
-  locatorBarcodeWidthScale: 1.3,
+  locatorBarcodeWidthScale: 1.5,
   locatorBarcodeFormat: 'CODE128',
   showLocatorBarcodeText: true,
+  locatorBarcodeTextSizePt: 8,
+  locatorBarcodeAlign: 'right',
+
+  // Table Border & Line Settings (Dedicated TABLE SETTINGS)
+  tableBorderEnabled: true,
+  tableBorderWidthPx: 1.5,
+  tableBorderStyle: 'solid',
+  tableBorderColor: '#27272a',
+  tableOuterBorder: true,
+  tableInnerHorizontalLines: true,
+  tableInnerVerticalLines: true,
+  tableHorizontalLineWidthPx: 1,
+  tableVerticalLineWidthPx: 1,
+
+  // Header Settings
+  tableHeaderBorder: true,
+  tableHeaderBorderWidthPx: 2,
+  tableHeaderAlign: 'left',
+
+  // Body Settings
+  tableBodyBorder: true,
+  tableBodyBorderWidthPx: 1,
+  tableBodyAlign: 'left',
 
   // Layout & Table Features
   showGridLines: true,
-  borderWidthPx: 1,
+  borderWidthPx: 1.5,
   showRowNumbers: true,
   showSignatures: true,
   showStoreHeader: true,
@@ -89,9 +112,9 @@ export const DEFAULT_COUNT_SHEET_CONFIG: CountSheetConfig = {
 
 export const DEFAULT_COUNT_SHEET_PRESETS: CountSheetPreset[] = [
   {
-    id: 'standard_20',
-    name: 'Standard Count Sheet (20 Rows)',
-    description: 'Default 20 item rows per page on A4 paper with upper-right locator barcode.',
+    id: 'standard_15',
+    name: 'Standard Count Sheet (15 Rows)',
+    description: 'Default 15 item rows per page on A4 paper with 12mm handwriting height & locator barcode.',
     isDefault: true,
     config: { ...DEFAULT_COUNT_SHEET_CONFIG },
   },

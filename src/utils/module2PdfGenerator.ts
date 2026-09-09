@@ -192,6 +192,29 @@ export async function generateModule2Pdf(
         doc.text(`* ${barcodeCode} *`, x + tagWidth / 2, y + tagHeight - 2, { align: 'center' });
       }
     }
+
+    // 6. Tag Branding Footer: Powered by: DECStudioHub (30% opacity inside tag boundary)
+    try {
+      if (typeof (doc as any).GState === 'function') {
+        (doc as any).saveGraphicsState();
+        (doc as any).setGState(new (doc as any).GState({ opacity: 0.3 }));
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Powered by: DECStudioHub', x + tagWidth / 2, y + tagHeight - 0.5, { align: 'center' });
+        (doc as any).restoreGraphicsState();
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4.5);
+        doc.setTextColor(179, 179, 179);
+        doc.text('Powered by: DECStudioHub', x + tagWidth / 2, y + tagHeight - 0.5, { align: 'center' });
+      }
+    } catch {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(4.5);
+      doc.setTextColor(179, 179, 179);
+      doc.text('Powered by: DECStudioHub', x + tagWidth / 2, y + tagHeight - 0.5, { align: 'center' });
+    }
   }
 
   if (onProgress) {

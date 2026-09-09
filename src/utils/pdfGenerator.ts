@@ -399,6 +399,29 @@ async function renderSingleTagToPdf(
     doc.setLineWidth(0.22);
     doc.line(lineStartX, fy + 0.5, lineEndX, fy + 0.5);
   });
+
+  // Tag Branding Footer: Powered by: DECStudioHub (30% opacity inside tag boundary)
+  try {
+    if (typeof (doc as any).GState === 'function') {
+      (doc as any).saveGraphicsState();
+      (doc as any).setGState(new (doc as any).GState({ opacity: 0.3 }));
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Powered by: DECStudioHub', x + w / 2, y + h - 0.7, { align: 'center' });
+      (doc as any).restoreGraphicsState();
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5);
+      doc.setTextColor(179, 179, 179);
+      doc.text('Powered by: DECStudioHub', x + w / 2, y + h - 0.7, { align: 'center' });
+    }
+  } catch {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5);
+    doc.setTextColor(179, 179, 179);
+    doc.text('Powered by: DECStudioHub', x + w / 2, y + h - 0.7, { align: 'center' });
+  }
 }
 
 /**

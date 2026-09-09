@@ -362,10 +362,33 @@ export interface CountSheetConfig {
 
   // Locator Barcode (Upper Right)
   showLocatorBarcode: boolean;
+  locatorBarcodeFormat: BarcodeType;
   locatorBarcodeHeightMm: number;
   locatorBarcodeWidthScale: number;
-  locatorBarcodeFormat: BarcodeType;
+  locatorBarcodeTextSizePt?: number;
   showLocatorBarcodeText: boolean;
+  locatorBarcodeAlign?: 'left' | 'center' | 'right';
+
+  // Table Border & Line Settings (Dedicated TABLE SETTINGS)
+  tableBorderEnabled?: boolean;
+  tableBorderWidthPx?: number;
+  tableBorderStyle?: 'solid' | 'dashed' | 'dotted';
+  tableBorderColor?: string;
+  tableOuterBorder?: boolean;
+  tableInnerHorizontalLines?: boolean;
+  tableInnerVerticalLines?: boolean;
+  tableHorizontalLineWidthPx?: number;
+  tableVerticalLineWidthPx?: number;
+
+  // Header Settings
+  tableHeaderBorder?: boolean;
+  tableHeaderBorderWidthPx?: number;
+  tableHeaderAlign?: 'left' | 'center' | 'right';
+
+  // Body Settings
+  tableBodyBorder?: boolean;
+  tableBodyBorderWidthPx?: number;
+  tableBodyAlign?: 'left' | 'center' | 'right';
 
   // Layout & Table Features
   showGridLines: boolean;

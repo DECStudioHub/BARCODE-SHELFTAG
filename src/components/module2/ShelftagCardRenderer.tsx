@@ -296,6 +296,18 @@ export const ShelftagCardRenderer: React.FC<ShelftagCardRendererProps> = ({
           </div>
         );
       })}
+
+      {/* Printable Document Branding Footer */}
+      <div
+        className="absolute bottom-0.5 right-1 pointer-events-none select-none font-sans font-medium z-30 tracking-tight leading-none"
+        style={{
+          color: isYellow ? '#000000' : '#18181b',
+          opacity: 0.3,
+          fontSize: `${Math.max(5, 5.5 * scale)}px`,
+        }}
+      >
+        Powered by: DECStudioHub
+      </div>
     </div>
   );
 };

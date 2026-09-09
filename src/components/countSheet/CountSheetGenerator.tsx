@@ -11,11 +11,17 @@ import {
   calculateCountSheetSummary,
   DEFAULT_COUNT_SHEET_CONFIG,
   DEFAULT_COUNT_SHEET_PRESETS,
+  getCountSheetPaperDimensions,
   paginateCountSheetItems,
 } from '../../utils/countSheetLayoutEngine';
 import { CountSheetPage } from './CountSheetPage';
 import { CountSheetConfigPanel } from './CountSheetConfigPanel';
 import {
+  downloadCountSheetPdf,
+  CountSheetPdfProgress,
+} from '../../utils/countSheetPdfGenerator';
+import {
+  AlertCircle,
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
@@ -23,10 +29,12 @@ import {
   Eye,
   FileSpreadsheet,
   Grid,
+  Loader2,
   Maximize2,
   Printer,
   Sliders,
   Tag,
+  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -77,6 +85,17 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
   const [zoomScale, setZoomScale] = useState<number>(0.85);
   const [showConfigDrawer, setShowConfigDrawer] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'single' | 'continuous' | 'grid'>('continuous');
+
+  // Print & PDF states
+  const [isPrinting, setIsPrinting] = useState<boolean>(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
+  const [pdfProgress, setPdfProgress] = useState<CountSheetPdfProgress | null>(null);
+  const [printNotice, setPrintNotice] = useState<{
+    type: 'error' | 'warning' | 'info';
+    message: string;
+  } | null>(null);
+
+  const printContainerRef = useRef<HTMLDivElement>(null);
 
   // Persist config on update
   const handleUpdateConfig = (newConfig: CountSheetConfig) => {
@@ -132,6 +151,16 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
     return calculateCountSheetSummary(items, config.rowsPerPage);
   }, [items, config.rowsPerPage]);
 
+  // Paper dimensions
+  const paperDims = useMemo(() => {
+    return getCountSheetPaperDimensions(
+      config.paperSize,
+      config.customWidthMm,
+      config.customHeightMm,
+      config.orientation
+    );
+  }, [config.paperSize, config.customWidthMm, config.customHeightMm, config.orientation]);
+
   // Adjust active page index if out of range
   useEffect(() => {
     if (activePageIndex >= pages.length) {
@@ -139,13 +168,190 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
     }
   }, [pages.length, activePageIndex]);
 
-  // Handle direct printing
+  // Handle PDF Generation & Download
+  const handleDownloadPdf = async () => {
+    if (isGeneratingPdf || pages.length === 0) return;
+    setPrintNotice(null);
+    setIsGeneratingPdf(true);
+    setPdfProgress({ currentPage: 1, totalPages: pages.length, percent: 10 });
+
+    try {
+      await downloadCountSheetPdf(
+        items,
+        config,
+        session,
+        selectedLocator,
+        progress => setPdfProgress(progress)
+      );
+    } catch (err: any) {
+      console.error('Download Count Sheet PDF error:', err);
+      setPrintNotice({
+        type: 'error',
+        message: err?.message || 'Unable to generate the Count Sheet PDF. Please try again.',
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+      setPdfProgress(null);
+    }
+  };
+
+  // Handle printing with multi-strategy support (direct window.print + standalone print window fallback for sandboxed iframes)
   const handlePrint = () => {
-    window.print();
+    setPrintNotice(null);
+    setIsPrinting(true);
+
+    const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+    // Strategy 1: In standard top-level tab, direct window.print() is preferred
+    if (!isIframe) {
+      try {
+        window.print();
+        setIsPrinting(false);
+        return;
+      } catch (err) {
+        console.warn('Direct window.print failed, attempting standalone window:', err);
+      }
+    }
+
+    // Strategy 2: Standalone print window (bypasses iframe sandbox restrictions and guarantees 100% clean print)
+    let printWin: Window | null = null;
+    try {
+      printWin = window.open('', '_blank');
+    } catch (e) {
+      console.warn('window.open blocked:', e);
+    }
+
+    const printHtml = printContainerRef.current?.innerHTML;
+
+    if (printWin && printHtml) {
+      try {
+        const currentStyles = Array.from(
+          document.querySelectorAll('style, link[rel="stylesheet"]')
+        )
+          .map(el => el.outerHTML)
+          .join('\n');
+
+        const paperDims = getCountSheetPaperDimensions(
+          config.paperSize,
+          config.customWidthMm,
+          config.customHeightMm,
+          config.orientation
+        );
+
+        printWin.document.open();
+        printWin.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <base href="${window.location.origin}/">
+  <title>Count Sheet - ${config.paperSize} (${pages.length} Pages)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  ${currentStyles}
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    @page {
+      size: ${config.orientation === 'landscape' ? 'landscape' : 'portrait'};
+      margin: 0;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background-color: #f1f5f9;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    @media print {
+      html, body {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+      }
+      .count-sheet-print-container {
+        display: block !important;
+        width: 100% !important;
+      }
+      .count-sheet-print-page,
+      .page-break {
+        page-break-after: always !important;
+        break-after: page !important;
+        box-shadow: none !important;
+        margin: 0 auto !important;
+        border: none !important;
+      }
+      .count-sheet-print-page:last-child,
+      .page-break:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+      .print-wrapper {
+        padding: 0 !important;
+        gap: 0 !important;
+        display: block !important;
+        background: #ffffff !important;
+      }
+    }
+    .print-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 8px;
+      gap: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="print-wrapper">
+    ${printHtml}
+  </div>
+
+  <script>
+    function triggerPrint() {
+      window.focus();
+      try {
+        window.print();
+      } catch (err) {
+        console.warn('Auto-print error in window:', err);
+      }
+    }
+    if (document.readyState === 'complete') {
+      setTimeout(triggerPrint, 350);
+    } else {
+      window.addEventListener('load', function() {
+        setTimeout(triggerPrint, 350);
+      });
+    }
+  </script>
+</body>
+</html>`);
+        printWin.document.close();
+        setIsPrinting(false);
+        return;
+      } catch (writeErr) {
+        console.warn('Failed writing to print window:', writeErr);
+        if (printWin) {
+          try { printWin.close(); } catch {}
+        }
+      }
+    }
+
+    // Strategy 3: Fallback direct call
+    try {
+      window.print();
+    } catch (finalErr: any) {
+      console.error('Final window.print call error:', finalErr);
+      setPrintNotice({
+        type: 'warning',
+        message: 'The browser restricted opening the print dialog inside this preview window. Please click "Download PDF" for a high-quality printable document, or open the app in a new tab.',
+      });
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 print:space-y-0 print:m-0 print:p-0 print:block">
       {/* 1. TOP SUMMARY & ACTION BAR (MANDATED SECTION 27) */}
       <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div>
@@ -222,17 +428,77 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
             <span>{showConfigDrawer ? 'Hide Settings' : 'Layout Settings'}</span>
           </button>
 
+          {/* Download PDF Button */}
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf || pages.length === 0}
+            title="Download Count Sheet as a high-resolution, vector PDF document"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-zinc-900 bg-white hover:bg-zinc-50 border border-zinc-300 hover:border-zinc-400 rounded-lg shadow-2xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                <span>
+                  Generating PDF...
+                  {pdfProgress && pdfProgress.totalPages > 1 ? ` (${pdfProgress.percent}%)` : ''}
+                </span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 text-emerald-700" />
+                <span>DOWNLOAD PDF</span>
+              </>
+            )}
+          </button>
+
           {/* Direct Print Button */}
           <button
             type="button"
             onClick={handlePrint}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors cursor-pointer"
+            disabled={isPrinting || isGeneratingPdf || pages.length === 0}
+            title="Print Count Sheets"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
           >
-            <Printer className="w-4 h-4" />
-            <span>Print Count Sheets</span>
+            {isPrinting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Preparing Print...</span>
+              </>
+            ) : (
+              <>
+                <Printer className="w-4 h-4" />
+                <span>Print</span>
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      {/* Print Notice / Error Banner */}
+      {printNotice && (
+        <div
+          className={`px-4 py-3 rounded-xl border flex items-center justify-between gap-3 text-xs print:hidden ${
+            printNotice.type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-800'
+              : printNotice.type === 'warning'
+              ? 'bg-amber-50 border-amber-200 text-amber-900'
+              : 'bg-blue-50 border-blue-200 text-blue-900'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{printNotice.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPrintNotice(null)}
+            className="p-1 hover:bg-black/5 rounded text-current transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* 2. SUB-TOOLBAR: LOCATOR FILTER & PREVIEW CONTROLS */}
       <div className="bg-white border border-zinc-200 rounded-xl px-4 py-2.5 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs print:hidden">
@@ -358,7 +624,7 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
       </div>
 
       {/* 3. MAIN WORKSPACE: CONFIG DRAWER + LIVE PREVIEW */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start print:hidden">
         {/* Settings Drawer */}
         {showConfigDrawer && (
           <div className="lg:col-span-4 sticky top-4 print:hidden">
@@ -378,7 +644,7 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
         <div
           className={`${
             showConfigDrawer ? 'lg:col-span-8' : 'lg:col-span-12'
-          } flex flex-col items-center justify-center p-6 bg-zinc-200/70 rounded-xl border border-zinc-300/80 overflow-x-auto print:p-0 print:m-0 print:border-none print:bg-transparent`}
+          } flex flex-col items-center justify-center p-6 bg-zinc-200/70 rounded-xl border border-zinc-300/80 overflow-x-auto print:hidden`}
         >
           {pages.length === 0 ? (
             <div className="p-12 text-center text-zinc-500">
@@ -460,32 +726,25 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
         </div>
       </div>
 
-      {/* 4. DEDICATED PRINT ENGINE CONTAINER (ACTIVE ONLY DURING @media print) */}
-      <div className="hidden print:block print:w-full print:m-0 print:p-0">
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            @media print {
-              @page {
-                size: ${config.orientation === 'landscape' ? 'landscape' : 'portrait'};
-                margin: 0;
-              }
-              body {
-                margin: 0;
-                padding: 0;
-                background: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              .print-page {
-                page-break-after: always !important;
-                break-after: page !important;
-                margin: 0 auto !important;
-              }
-            }
-          `
-        }} />
+      {/* 4. DEDICATED NATIVE PRINT CONTAINER (Hidden on screen, rendered during native print and standalone window) */}
+      <div
+        id="count-sheet-print-engine"
+        ref={printContainerRef}
+        className="count-sheet-print-container hidden print:block print:w-full print:m-0 print:p-0"
+      >
         {pages.map((p, idx) => (
-          <div key={`print-page-${idx}`} className="print-page">
+          <div
+            key={`print-page-${idx}`}
+            className="count-sheet-print-page page-break bg-white"
+            style={{
+              width: `${paperDims.widthMm}mm`,
+              height: `${paperDims.heightMm}mm`,
+              boxSizing: 'border-box',
+              margin: '0 auto',
+              pageBreakAfter: idx === pages.length - 1 ? 'auto' : 'always',
+              breakAfter: idx === pages.length - 1 ? 'auto' : 'page',
+            }}
+          >
             <CountSheetPage
               pageData={p}
               config={config}

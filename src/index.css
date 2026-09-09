@@ -24,11 +24,37 @@
     display: none !important;
   }
 
+  .print\:block {
+    display: block !important;
+  }
+
+  .count-sheet-print-container {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .count-sheet-print-page,
   .page-break {
     page-break-after: always !important;
     break-after: page !important;
     display: block !important;
     overflow: hidden !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .count-sheet-print-page:last-child,
+  .page-break:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+}
+
+@media screen {
+  .count-sheet-print-container {
+    display: none !important;
   }
 }
 

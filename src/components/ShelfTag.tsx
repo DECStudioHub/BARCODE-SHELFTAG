@@ -227,6 +227,17 @@ export const ShelfTag: React.FC<ShelfTagProps> = ({
             )}
           </div>
         </div>
+
+        {/* Tag Branding Footer */}
+        <div
+          className="text-center font-sans font-medium text-zinc-900 select-none pointer-events-none pt-0.5 tracking-tight leading-none"
+          style={{
+            fontSize: `${Math.max(5.5, 6 * scale)}px`,
+            opacity: 0.3,
+          }}
+        >
+          Powered by: DECStudioHub
+        </div>
       </div>
     </div>
   );

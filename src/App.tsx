@@ -23,6 +23,8 @@ import {
   applyThemeToDocument,
 } from './utils/theme';
 import { ShelfTagPPModule } from './components/module2/ShelfTagPPModule';
+import { WelcomeModal } from './components/WelcomeModal';
+import { BackupRestoreModal } from './components/BackupRestoreModal';
 
 const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   paperSize: 'A4',
@@ -176,6 +178,16 @@ export default function App() {
     } catch {}
     return 'import';
   });
+
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('prg_hide_welcome') !== 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
 
   // Load initial state from local storage if available
   useEffect(() => {
@@ -393,7 +405,7 @@ export default function App() {
   const selectedCount = items.filter(it => it.isSelected !== false).length;
 
   return (
-    <div className="min-h-screen bg-zinc-100/70 text-zinc-900 flex flex-col font-sans print:bg-white print:m-0 print:p-0">
+    <div className="min-h-screen bg-zinc-100/70 text-zinc-900 flex flex-col font-sans print:block print:min-h-0 print:h-auto print:bg-white print:m-0 print:p-0">
       <Navbar
         activeModule={activeModule}
         onSelectModule={handleSelectModule}
@@ -404,9 +416,11 @@ export default function App() {
         session={session}
         settings={settings}
         onReset={handleResetData}
+        onOpenWelcome={() => setShowWelcome(true)}
+        onOpenBackup={() => setShowBackupModal(true)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 print:p-0 print:m-0 print:max-w-none print:w-full">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 print:block print:p-0 print:m-0 print:max-w-none print:w-full">
         {currentStep === 'settings' ? (
           <SettingsTab
             settings={settings}
@@ -487,6 +501,41 @@ export default function App() {
           </>
         )}
       </main>
+
+      {/* Application UI Footer */}
+      <footer className="w-full border-t border-zinc-200/80 bg-white/80 backdrop-blur-xs py-3.5 px-4 text-center print:hidden mt-auto">
+        <p className="text-xs font-medium text-zinc-500 tracking-tight select-none">
+          Powered by DECStudioAiCreation
+        </p>
+      </footer>
+
+      {/* Startup & Help Welcome UI Modal */}
+      <WelcomeModal
+        isOpen={showWelcome}
+        onClose={() => setShowWelcome(false)}
+        onLoadDemoData={handleLoadSampleData}
+        onOpenImport={() => {
+          setActiveModule('count_tag');
+          setCurrentStep('import');
+        }}
+      />
+
+      {/* Global System Backup & Restore Modal */}
+      <BackupRestoreModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+        onRestoreComplete={() => {
+          // Trigger re-read from localStorage
+          try {
+            const savedItems = localStorage.getItem('inv_items');
+            if (savedItems) {
+              const parsed: InventoryItem[] = JSON.parse(savedItems);
+              setItems(parsed);
+              setSummary(revalidateItems(parsed));
+            }
+          } catch {}
+        }}
+      />
     </div>
   );
 }
