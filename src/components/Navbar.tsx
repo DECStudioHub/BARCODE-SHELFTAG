@@ -15,7 +15,7 @@ import {
   Database,
 } from 'lucide-react';
 import { AppStep, InventorySession, SystemSettings, AppModuleId } from '../types';
-import { getPaletteTheme } from '../utils/theme';
+import { getPaletteTheme, DEFAULT_PRINCE_LOGO, getEffectiveLogoUrl } from '../utils/theme';
 
 interface NavbarProps {
   activeModule: AppModuleId;
@@ -76,41 +76,37 @@ export const Navbar: React.FC<NavbarProps> = ({
               }
             }}
             className="flex items-center gap-3 shrink-0 cursor-pointer group"
-            title="PRG Shelftag & Barcode Generator"
+            title="DEC — Digital Efficiency & Continuity System"
           >
-            <div
-              className="w-9 h-9 rounded-lg text-white flex items-center justify-center shadow-xs overflow-hidden transition-transform group-hover:scale-105"
-              style={{ backgroundColor: activeTheme.primary }}
-            >
-              {settings.customLogoUrl ? (
-                <img
-                  src={settings.customLogoUrl}
-                  alt="System Logo"
-                  className="w-full h-full object-contain p-0.5"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <Tag className="w-5 h-5" />
-              )}
+            <div className="w-10 h-10 rounded-lg bg-white border border-zinc-200 shadow-2xs flex items-center justify-center overflow-hidden transition-transform group-hover:scale-105 p-1 shrink-0">
+              <img
+                src={getEffectiveLogoUrl(settings.customLogoUrl)}
+                alt="Prince Retail Logo"
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                }}
+              />
             </div>
             <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-black text-sm tracking-tight text-zinc-900 group-hover:text-black">
-                  {settings.systemName || 'PRG SHELFTAG & BARCODE GENERATOR'}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-base sm:text-lg tracking-tight text-zinc-900 group-hover:text-black">
+                  DEC
                 </span>
                 <span
-                  className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm border transition-colors"
+                  className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-sm border transition-colors hidden sm:inline-block"
                   style={{
                     backgroundColor: activeTheme.primaryLight,
                     borderColor: activeTheme.primaryBorder,
                     color: activeTheme.primaryText,
                   }}
                 >
-                  {settings.systemTagline || 'Inventory System V2'}
+                  Digital Efficiency & Continuity System
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-500 font-medium truncate max-w-[200px] sm:max-w-none">
-                {settings.systemSubtitle || 'Count Tags, Shelf Tags & PP Tags'}
+              <p className="text-[11px] text-zinc-500 font-medium truncate max-w-[240px] sm:max-w-none">
+                Backup • Continuity • Alternative Process • Process Improvement
               </p>
             </div>
           </div>

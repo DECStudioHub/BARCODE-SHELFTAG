@@ -44,7 +44,7 @@ export const DEFAULT_COUNT_SHEET_CONFIG: CountSheetConfig = {
     descMm: 88,
     countMm: 34,
   },
-  sortField: 'original',
+  sortField: 'description',
   sortOrder: 'asc',
   columnOrder: [...DEFAULT_COUNT_SHEET_COLUMN_ORDER],
   columnVisibility: { ...DEFAULT_COUNT_SHEET_COLUMN_VISIBILITY },
@@ -70,6 +70,7 @@ export const DEFAULT_COUNT_SHEET_CONFIG: CountSheetConfig = {
   // Barcode Column
   showBarcodeGraphic: true,
   barcodeHeightMm: 7.5,
+  barcodeWidthMm: 36,
   barcodeFormat: 'CODE128',
   showBarcodeValueText: true,
   barcodeAlign: 'center',
@@ -278,11 +279,11 @@ export function sortInventoryItemsForCountSheet(
       valA = String(a.sku || a.id || '').trim();
       valB = String(b.sku || b.id || '').trim();
     } else if (field === 'description') {
-      valA = String(a.description || (a as any).desc || (a as any).name || '').trim();
-      valB = String(b.description || (b as any).desc || (b as any).name || '').trim();
+      valA = String(a.description || '').trim();
+      valB = String(b.description || '').trim();
     } else if (field === 'barcode') {
-      valA = String(a.barcode || (a as any).barcode_number || '').trim();
-      valB = String(b.barcode || (b as any).barcode_number || '').trim();
+      valA = String(a.barcode || a.upcNo || '').trim();
+      valB = String(b.barcode || b.upcNo || '').trim();
     }
 
     // Keep items with empty values at the very bottom

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { UploadCloud, FileSpreadsheet, Download, Sparkles, AlertCircle, AlertTriangle, Building2, Calendar, User, FileText, CheckCircle2 } from 'lucide-react';
 import { InventoryItem, InventorySession, ValidationSummary } from '../types';
 import { parseExcelFile, downloadSampleExcelTemplate, SAMPLE_DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
+import { DEFAULT_PRINCE_LOGO, getEffectiveLogoUrl } from '../utils/theme';
 
 interface Step1ImportProps {
   onDataLoaded: (items: InventoryItem[], summary: ValidationSummary, filename: string) => void;
@@ -94,25 +95,45 @@ export const Step1Import: React.FC<Step1ImportProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Hero Welcome banner */}
-      <div className="bg-white rounded-xl border border-zinc-200 shadow-xs p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-100 pb-5 mb-6">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-              STEP 1 — IMPORT EXCEL FILE
-            </span>
-            <h1 className="text-2xl font-black tracking-tight text-zinc-900 mt-2">
-              Inventory Shelf Tag & Counting System
-            </h1>
-            <p className="text-sm text-zinc-600 mt-1 max-w-xl">
-              Upload your inventory spreadsheet to automatically validate items, generate scannable barcode shelf tags, and print physical count verification sheets.
-            </p>
+      {/* Home Page — DEC System Identity Banner */}
+      <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs p-6 sm:p-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-zinc-100 pb-6 mb-6">
+          <div className="flex items-center gap-4 sm:gap-5">
+            {/* Built-in Prince Retail Logo */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-zinc-200 shadow-2xs p-1.5 flex items-center justify-center shrink-0">
+              <img
+                src={getEffectiveLogoUrl()}
+                alt="Prince Retail Logo"
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                }}
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                  STEP 1 — IMPORT EXCEL FILE
+                </span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950">
+                DEC
+              </h1>
+              <p className="text-sm sm:text-base font-bold text-zinc-800 mt-0.5">
+                Digital Efficiency & Continuity System
+              </p>
+              <p className="text-xs sm:text-sm font-medium text-zinc-500 mt-1">
+                Backup • Continuity • Alternative Process • Process Improvement
+              </p>
+            </div>
           </div>
-          <div className="flex flex-wrap sm:flex-col gap-2 shrink-0">
+
+          <div className="flex flex-wrap sm:flex-col gap-2 shrink-0 w-full md:w-auto">
             <button
               type="button"
               onClick={downloadSampleExcelTemplate}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 border border-zinc-300 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 border border-zinc-300 rounded-lg transition-colors cursor-pointer"
             >
               <Download className="w-4 h-4 text-zinc-600" />
               Download Template (.xlsx)
@@ -120,7 +141,7 @@ export const Step1Import: React.FC<Step1ImportProps> = ({
             <button
               type="button"
               onClick={handleLoadDemo}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors cursor-pointer shadow-xs"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors cursor-pointer shadow-2xs"
             >
               <Sparkles className="w-4 h-4 text-emerald-600" />
               Load Demo Data (12 Items)

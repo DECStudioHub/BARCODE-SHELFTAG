@@ -28,7 +28,8 @@
     display: block !important;
   }
 
-  .count-sheet-print-container {
+  .count-sheet-print-container,
+  .shelftag-print-container {
     display: block !important;
     width: 100% !important;
     margin: 0 !important;
@@ -36,6 +37,7 @@
   }
 
   .count-sheet-print-page,
+  .shelftag-print-page,
   .page-break {
     page-break-after: always !important;
     break-after: page !important;
@@ -46,6 +48,7 @@
   }
 
   .count-sheet-print-page:last-child,
+  .shelftag-print-page:last-child,
   .page-break:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
@@ -53,7 +56,8 @@
 }
 
 @media screen {
-  .count-sheet-print-container {
+  .count-sheet-print-container,
+  .shelftag-print-container {
     display: none !important;
   }
 }

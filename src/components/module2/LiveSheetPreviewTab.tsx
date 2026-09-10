@@ -15,15 +15,18 @@ import { Module2Config, ShelfTagItem } from '../../types';
 import { ShelftagCardRenderer } from './ShelftagCardRenderer';
 import { generateShelftagPdf } from '../../utils/shelftagPdfService';
 import { computeShelftagSheetLayout } from '../../utils/shelftagLayoutEngine';
+import { executeShelftagPrint } from '../../utils/shelftagPrintService';
 
 interface LiveSheetPreviewTabProps {
   items: ShelfTagItem[];
   config: Module2Config;
+  onDirectPrint?: () => void;
 }
 
 export const LiveSheetPreviewTab: React.FC<LiveSheetPreviewTabProps> = ({
   items,
   config,
+  onDirectPrint,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [zoomPercent, setZoomPercent] = useState<65 | 85 | 100>(85);
@@ -70,24 +73,19 @@ export const LiveSheetPreviewTab: React.FC<LiveSheetPreviewTabProps> = ({
 
   // Direct Browser Print
   const handleDirectPrint = () => {
+    if (onDirectPrint) {
+      onDirectPrint();
+      return;
+    }
     if (printItems.length === 0) {
       alert('Please select at least one tag to print.');
       return;
     }
-    window.print();
+    const container = document.getElementById('shelftag-print-container');
+    executeShelftagPrint(container, layout);
   };
 
   const zoomScale = zoomPercent / 100;
-
-  // Split all items into chunks for multi-page print renderer
-  const allPagesChunks = useMemo(() => {
-    const chunks: ShelfTagItem[][] = [];
-    for (let i = 0; i < printItems.length; i += layout.tagsPerSheet) {
-      chunks.push(printItems.slice(i, i + layout.tagsPerSheet));
-    }
-    if (chunks.length === 0) chunks.push([]);
-    return chunks;
-  }, [printItems, layout.tagsPerSheet]);
 
   return (
     <div className="space-y-4">
@@ -361,98 +359,6 @@ export const LiveSheetPreviewTab: React.FC<LiveSheetPreviewTabProps> = ({
           </div>
         )}
       </div>
-
-      {/* 5. Dedicated Multi-Page Browser Print Container (Section 6, 7, 24) */}
-      <div id="shelftag-print-container" className="hidden print:block">
-        {allPagesChunks.map((chunk, pageIdx) => (
-          <div
-            key={pageIdx}
-            className="shelftag-print-page bg-white"
-            style={{
-              width: `${layout.paperWidthMm}mm`,
-              height: `${layout.paperHeightMm}mm`,
-              paddingTop: `${layout.topMarginMm}mm`,
-              paddingBottom: `${layout.bottomMarginMm}mm`,
-              paddingLeft: `${layout.effectiveLeftMarginMm}mm`,
-              paddingRight: `${layout.rightMarginMm}mm`,
-              boxSizing: 'border-box',
-              position: 'relative',
-              overflow: 'hidden',
-              pageBreakAfter: pageIdx < allPagesChunks.length - 1 ? 'always' : 'auto',
-              breakAfter: pageIdx < allPagesChunks.length - 1 ? 'page' : 'auto',
-              pageBreakInside: 'avoid',
-              breakInside: 'avoid',
-            }}
-          >
-            {/* Tags Grid */}
-            <div
-              className="grid"
-              style={{
-                gridTemplateColumns: `repeat(${layout.columns}, ${layout.tagWidthMm}mm)`,
-                columnGap: `${layout.colGapMm}mm`,
-                rowGap: `${layout.rowGapMm}mm`,
-                width: 'fit-content',
-              }}
-            >
-              {chunk.map(item => (
-                <div
-                  key={item.id}
-                  style={{
-                    width: `${layout.tagWidthMm}mm`,
-                    height: `${layout.tagHeightMm}mm`,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <ShelftagCardRenderer
-                    item={item}
-                    config={config}
-                    scale={1}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* 6. Strict Physical Print CSS (Section 7) */}
-      <style>{`
-        @media print {
-          /* Hide non-print application UI */
-          body * {
-            visibility: hidden;
-          }
-          #shelftag-print-container,
-          #shelftag-print-container * {
-            visibility: visible;
-          }
-          #shelftag-print-container {
-            position: absolute;
-            left: 0;
-            top: 0;
-            margin: 0 !important;
-            padding: 0 !important;
-            display: block !important;
-            width: ${layout.paperWidthMm}mm !important;
-          }
-          .shelftag-print-page {
-            margin: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          @page {
-            size: ${layout.paperWidthMm}mm ${layout.paperHeightMm}mm;
-            margin: 0mm !important;
-          }
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

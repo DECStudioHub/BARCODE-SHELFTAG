@@ -31,6 +31,8 @@ import {
   PALETTES,
   PRESET_LOGOS,
   getPaletteTheme,
+  DEFAULT_PRINCE_LOGO,
+  getEffectiveLogoUrl,
 } from '../utils/theme';
 import { DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
 import { BackupRestoreModal } from './BackupRestoreModal';
@@ -214,7 +216,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   };
 
   const handleResetLogo = () => {
-    const defaultLogo = '/prince-logo.svg';
+    const defaultLogo = DEFAULT_PRINCE_LOGO;
     onUpdateSettings({
       ...settings,
       customLogoUrl: defaultLogo,
@@ -239,19 +241,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       onResetLayout();
       showNotification('Layout configuration reset to default 9-per-page A4 specs.');
     } else if (confirmAction.type === 'reset_branding') {
-      setNameInput('SHELF TAG');
-      setTaglineInput('Inventory System');
-      setSubtitleInput('Excel to Printable Barcode Tags');
+      setNameInput('DEC');
+      setTaglineInput('Digital Efficiency & Continuity System');
+      setSubtitleInput('Backup • Continuity • Alternative Process • Process Improvement');
       onUpdateSettings({
-        systemName: 'SHELF TAG',
-        systemTagline: 'Inventory System',
-        systemSubtitle: 'Excel to Printable Barcode Tags',
+        systemName: 'DEC',
+        systemTagline: 'Digital Efficiency & Continuity System',
+        systemSubtitle: 'Backup • Continuity • Alternative Process • Process Improvement',
         paletteId: 'emerald',
         customPrimaryColor: '#047857',
-        customLogoUrl: '/prince-logo.svg',
+        customLogoUrl: DEFAULT_PRINCE_LOGO,
         applyLogoToShelfTags: true,
       });
-      showNotification('Branding and color palette reset to defaults.');
+      showNotification('Branding and color palette reset to DEC defaults.');
     } else if (confirmAction.type === 'factory_reset') {
       onFactoryReset();
       showNotification('System has undergone a full factory reset.', 'info');
@@ -495,24 +497,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <div className="p-4 rounded-lg bg-zinc-50 border border-zinc-200">
               <div className="flex items-center gap-3">
                 <div
-                  className="w-9 h-9 rounded-lg text-white flex items-center justify-center shrink-0 shadow-xs overflow-hidden"
-                  style={{ backgroundColor: activeTheme.primary }}
+                  className="w-9 h-9 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shrink-0 shadow-xs overflow-hidden p-1"
                 >
-                  {settings.customLogoUrl ? (
-                    <img
-                      src={settings.customLogoUrl}
-                      alt="Logo"
-                      className="w-full h-full object-contain p-1"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <Tag className="w-5 h-5" />
-                  )}
+                  <img
+                    src={getEffectiveLogoUrl(settings.customLogoUrl)}
+                    alt="Logo"
+                    className="w-full h-full object-contain"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                    }}
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-black text-sm tracking-tight text-zinc-900">
-                      {nameInput.trim() || 'SHELF TAG'}
+                      {nameInput.trim() || 'DEC'}
                     </span>
                     <span
                       className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm border"
@@ -864,20 +864,23 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             {/* Large Preview */}
             <div className="flex flex-col items-center justify-center p-8 bg-zinc-50 rounded-xl border border-zinc-200">
               <div className="w-24 h-24 rounded-2xl bg-white shadow-xs border border-zinc-200 flex items-center justify-center p-3 overflow-hidden">
-                {settings.customLogoUrl ? (
-                  <img
-                    src={settings.customLogoUrl}
-                    alt="Active Logo"
-                    className="w-full h-full object-contain"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <Tag className="w-10 h-10 text-zinc-400" />
-                )}
+                <img
+                  src={getEffectiveLogoUrl(settings.customLogoUrl)}
+                  alt="Active Logo"
+                  className="w-full h-full object-contain"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                  }}
+                />
               </div>
               <span className="mt-3 text-xs font-bold text-zinc-700">Active System Logo</span>
               <span className="text-[11px] text-zinc-400">
-                {settings.customLogoUrl.startsWith('data:') ? 'Custom Uploaded Image' : 'Vector Image URL'}
+                {settings.customLogoUrl && settings.customLogoUrl.startsWith('data:')
+                  ? 'Custom Uploaded Image'
+                  : settings.customLogoUrl === DEFAULT_PRINCE_LOGO
+                  ? 'Built-in Prince Retail Logo (Default)'
+                  : 'Image Asset URL'}
               </span>
             </div>
 
@@ -897,10 +900,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   <span className="font-mono text-[10px] text-zinc-600 font-bold">#001</span>
                   <div className="w-5 h-5 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-white">
                     <img
-                      src={settings.customLogoUrl || '/prince-logo.svg'}
+                      src={getEffectiveLogoUrl(settings.customLogoUrl)}
                       alt="Tag Logo"
                       className="w-full h-full object-contain"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                      }}
                     />
                   </div>
                 </div>

@@ -430,8 +430,9 @@ export async function generateCountSheetPdf(
               }
 
               if (bcDataUrl) {
-                const bcH = Math.min(rowHeight - 2, Math.max(5, (config.barcodeHeightMm || 7.5)));
-                const bcW = Math.min(colW - 3, 38);
+                const bcH = Math.min(rowHeight - 2, Math.max(4, (config.barcodeHeightMm || 7.5)));
+                const targetW = Number(config.barcodeWidthMm) > 0 ? Number(config.barcodeWidthMm) : 36;
+                const bcW = Math.min(colW - 2, Math.max(10, targetW));
                 const bcX = rowColX + (colW - bcW) / 2;
                 const bcY = rowY + (rowHeight - bcH) / 2;
                 try {

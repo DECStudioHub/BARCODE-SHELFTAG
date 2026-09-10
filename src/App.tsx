@@ -19,6 +19,8 @@ import {
 import { DEMO_ITEMS, revalidateItems } from './utils/excelParser';
 import {
   DEFAULT_SYSTEM_SETTINGS,
+  DEFAULT_PRINCE_LOGO,
+  getEffectiveLogoUrl,
   getPaletteTheme,
   applyThemeToDocument,
 } from './utils/theme';
@@ -52,7 +54,7 @@ const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   showSessionHeader: false,
   headerStyle: 'filled',
   showLogo: true,
-  logoUrl: '/prince-logo.svg',
+  logoUrl: DEFAULT_PRINCE_LOGO,
   logoHeightMm: 6,
   showTagNumber: true,
   countBoxHeightMm: 12,
@@ -135,7 +137,24 @@ export default function App() {
     try {
       const savedSettings = localStorage.getItem('inv_settings');
       if (savedSettings) {
-        return { ...DEFAULT_SYSTEM_SETTINGS, ...JSON.parse(savedSettings) };
+        const parsed = JSON.parse(savedSettings);
+        const isLegacyTitle =
+          !parsed.systemName ||
+          parsed.systemName === 'PRG SHELFTAG & BARCODE GENERATOR' ||
+          parsed.systemName === 'SHELF TAG';
+        const isLegacySubtitle =
+          !parsed.systemSubtitle ||
+          parsed.systemSubtitle === 'Count Tags, Shelf Tags & PP Tags' ||
+          parsed.systemSubtitle === 'Excel to Printable Barcode Tags';
+
+        return {
+          ...DEFAULT_SYSTEM_SETTINGS,
+          ...parsed,
+          systemName: isLegacyTitle ? 'DEC' : parsed.systemName,
+          systemTagline: isLegacyTitle ? 'Digital Efficiency & Continuity System' : (parsed.systemTagline || 'Digital Efficiency & Continuity System'),
+          systemSubtitle: isLegacySubtitle ? 'Backup • Continuity • Alternative Process • Process Improvement' : parsed.systemSubtitle,
+          customLogoUrl: getEffectiveLogoUrl(parsed.customLogoUrl),
+        };
       }
     } catch {}
     return DEFAULT_SYSTEM_SETTINGS;

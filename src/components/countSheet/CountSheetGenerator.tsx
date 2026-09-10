@@ -79,7 +79,14 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
     try {
       const saved = localStorage.getItem('count_sheet_active_config');
       if (saved) {
-        return { ...DEFAULT_COUNT_SHEET_CONFIG, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_COUNT_SHEET_CONFIG,
+          ...parsed,
+          barcodeWidthMm: parsed.barcodeWidthMm || DEFAULT_COUNT_SHEET_CONFIG.barcodeWidthMm || 36,
+          sortField: parsed.sortField || 'description',
+          sortOrder: parsed.sortOrder || 'asc',
+        };
       }
     } catch {}
     return DEFAULT_COUNT_SHEET_CONFIG;
@@ -326,8 +333,14 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
   // Generate paginated pages strictly for selected locators
   const pages: CountSheetPageData[] = useMemo(() => {
     if (selectedLocatorsArray.length === 0) return [];
-    return paginateCountSheetItems(items, config.rowsPerPage, selectedLocatorsArray);
-  }, [items, config.rowsPerPage, selectedLocatorsArray]);
+    return paginateCountSheetItems(
+      items,
+      config.rowsPerPage,
+      selectedLocatorsArray,
+      config.sortField,
+      config.sortOrder
+    );
+  }, [items, config.rowsPerPage, selectedLocatorsArray, config.sortField, config.sortOrder]);
 
   // Paper dimensions
   const paperDims = useMemo(() => {

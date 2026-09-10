@@ -13,6 +13,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { playRetailWelcomeSound } from '../utils/welcomeAudio';
+import { DEFAULT_PRINCE_LOGO, getEffectiveLogoUrl } from '../utils/theme';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -111,32 +112,47 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
         </div>
 
         {/* Welcome Banner */}
-        <div className="text-center space-y-2.5 pb-4 border-b border-zinc-100">
+        <div className="text-center space-y-3 pb-5 border-b border-zinc-100">
           {/* 1. WELCOME */}
-          <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-800 text-xs font-black tracking-widest uppercase shadow-2xs">
+          <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-800 text-xs font-black tracking-widest uppercase shadow-2xs">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
             <span>WELCOME</span>
           </div>
 
-          {/* 2. DECStudioAiCreation BRANDING: Bold, 50px Desktop, Center Aligned */}
+          {/* 2. DEC (Prominent System Title) */}
+          <h2 className="text-4xl sm:text-5xl font-black text-zinc-950 tracking-tight text-center">
+            DEC
+          </h2>
+
+          {/* 3. Subtitle */}
+          <p className="text-base sm:text-lg font-bold text-zinc-800 tracking-tight text-center">
+            Digital Efficiency & Continuity System
+          </p>
+
+          {/* 4. Second descriptive line */}
+          <p className="text-xs sm:text-sm font-medium text-zinc-500 tracking-normal text-center max-w-lg mx-auto">
+            Backup • Continuity • Alternative Process • Process Improvement
+          </p>
+
+          {/* 5. [Prince Retail Logo] — Clearly visible, un-distorted, perfectly centered */}
+          <div className="flex items-center justify-center py-1.5">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white border border-zinc-200 shadow-xs p-2 flex items-center justify-center transition-transform hover:scale-105">
+              <img
+                src={getEffectiveLogoUrl()}
+                alt="Prince Retail Logo"
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                }}
+              />
+            </div>
+          </div>
+
+          {/* 6. DECStudioAiCreation: Bold, 50px Desktop, Center Aligned */}
           <h1 className="font-bold text-3xl sm:text-4xl md:text-[50px] leading-tight md:leading-none text-zinc-900 tracking-tight text-center">
             DECStudioAiCreation
           </h1>
-
-          {/* 3. System Identifier */}
-          <div className="flex items-center justify-center gap-2 flex-wrap pt-0.5">
-            <span className="font-mono font-bold text-xs sm:text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200 shadow-2xs">
-              PRG-Shelftag-Barcode-Generator-V2
-            </span>
-            <span className="px-2 py-0.5 bg-zinc-100 text-zinc-700 font-bold text-[10px] rounded-full uppercase tracking-wider border border-zinc-200">
-              Ready
-            </span>
-          </div>
-
-          {/* 4. Short existing system description */}
-          <p className="text-xs sm:text-sm text-zinc-500 max-w-xl mx-auto pt-0.5 leading-relaxed">
-            Physical Inventory Count Sheets, Tag Generation & Retail Shelf Labels
-          </p>
         </div>
 
         {/* Feature Grid */}

@@ -363,6 +363,7 @@ export interface CountSheetConfig {
   // Barcode Column
   showBarcodeGraphic: boolean;
   barcodeHeightMm: number;
+  barcodeWidthMm?: number;
   barcodeFormat: BarcodeType;
   showBarcodeValueText: boolean;
   barcodeAlign: 'left' | 'center' | 'right';

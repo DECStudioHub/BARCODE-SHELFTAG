@@ -23,7 +23,8 @@ export function generateBarcodeSvgString(
   type: BarcodeType = 'CODE128',
   height: number = 38,
   displayValue: boolean = true,
-  fontSize: number = 12
+  fontSize: number = 12,
+  widthMm?: number
 ): string {
   if (!value || typeof document === 'undefined') {
     return '';
@@ -32,11 +33,21 @@ export function generateBarcodeSvgString(
   const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   const format = getJsBarcodeFormat(type);
 
+  // If widthMm is provided, dynamically calibrate narrow bar module width
+  // In typical barcode, total modules ~ (value.length + 4) * 11 + 20
+  // Target width in px = widthMm * 3.78
+  let calculatedWidth = 1.8;
+  if (widthMm && widthMm > 0) {
+    const targetPx = widthMm * 3.78;
+    const estModules = Math.max(70, (String(value).trim().length + 4) * 11 + 20);
+    calculatedWidth = Math.max(0.65, Math.min(2.8, targetPx / estModules));
+  }
+
   try {
     JsBarcode(svgNode, String(value).trim(), {
       format: format,
       lineColor: '#000000',
-      width: 1.8,
+      width: calculatedWidth,
       height: height,
       displayValue: displayValue,
       fontSize: fontSize,
@@ -63,7 +74,7 @@ export function generateBarcodeSvgString(
       JsBarcode(svgNode, String(value).trim(), {
         format: 'CODE128',
         lineColor: '#000000',
-        width: 1.8,
+        width: calculatedWidth,
         height: height,
         displayValue: displayValue,
         fontSize: fontSize,

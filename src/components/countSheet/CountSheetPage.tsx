@@ -376,9 +376,10 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
                   ? generateBarcodeSvgString(
                       codeVal,
                       config.barcodeFormat || 'CODE128',
-                      Math.max(14, Math.round(config.barcodeHeightMm * 2.8 * scale)),
+                      Math.max(14, Math.round((config.barcodeHeightMm || 7.5) * 2.8 * scale)),
                       config.showBarcodeValueText !== false,
-                      Math.max(6, Math.round((config.barcodeTextFontSizePt || 7) * scale))
+                      Math.max(6, Math.round((config.barcodeTextFontSizePt || 7) * scale)),
+                      (config.barcodeWidthMm || 36) * scale
                     )
                   : '';
 

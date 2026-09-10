@@ -87,13 +87,27 @@ export const PALETTES: Record<Exclude<ColorPaletteId, 'custom'>, ColorPaletteThe
   },
 };
 
+export const DEFAULT_PRINCE_LOGO = '/prince-logo.svg';
+export const PRINCE_LOGO_JPG = '/prince-logo.jpg';
+
+/**
+ * Resolves the effective logo URL with guaranteed fallback to the built-in Prince Retail logo.
+ * If user custom logo is missing, empty, or invalid, automatically returns the built-in Prince Retail logo.
+ */
+export function getEffectiveLogoUrl(customUrl?: string | null): string {
+  if (!customUrl || typeof customUrl !== 'string' || !customUrl.trim()) {
+    return DEFAULT_PRINCE_LOGO;
+  }
+  return customUrl.trim();
+}
+
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
-  systemName: 'PRG SHELFTAG & BARCODE GENERATOR',
-  systemTagline: 'Inventory System V2',
-  systemSubtitle: 'Count Tags, Shelf Tags & PP Tags',
+  systemName: 'DEC',
+  systemTagline: 'Digital Efficiency & Continuity System',
+  systemSubtitle: 'Backup • Continuity • Alternative Process • Process Improvement',
   paletteId: 'emerald',
   customPrimaryColor: '#047857',
-  customLogoUrl: '/prince-logo.svg',
+  customLogoUrl: DEFAULT_PRINCE_LOGO,
   applyLogoToShelfTags: true,
 };
 
@@ -159,7 +173,7 @@ export const PRESET_LOGOS = [
   {
     id: 'prince',
     name: 'Prince Retail',
-    url: '/prince-logo.svg',
+    url: DEFAULT_PRINCE_LOGO,
     description: 'Original Prince Retail badge with crown emblem',
   },
   {

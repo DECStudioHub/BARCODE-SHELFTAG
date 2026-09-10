@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Printer,
   Download,
@@ -16,7 +16,10 @@ import { ShelfTagItemsTab } from './ShelfTagItemsTab';
 import { LayoutColorSetupTab } from './LayoutColorSetupTab';
 import { LiveSheetPreviewTab } from './LiveSheetPreviewTab';
 import { TagFieldLayoutEditorTab } from './TagFieldLayoutEditorTab';
+import { ShelftagCardRenderer } from './ShelftagCardRenderer';
 import { generateShelftagPdf } from '../../utils/shelftagPdfService';
+import { computeShelftagSheetLayout } from '../../utils/shelftagLayoutEngine';
+import { executeShelftagPrint } from '../../utils/shelftagPrintService';
 import { DEFAULT_SHELFTAG_PRESETS, DEFAULT_PPTAG_PRESETS, loadPresetsFromStorage } from './fieldDefaults';
 
 interface ShelfTagPPModuleProps {
@@ -80,20 +83,40 @@ export const ShelfTagPPModule: React.FC<ShelfTagPPModuleProps> = ({
     setShelfTagItems(SAMPLE_SHELF_TAGS);
   };
 
+  // Filtered printable items
+  const printItems = useMemo(() => {
+    return shelfTagItems.filter(i => i.isSelected !== false);
+  }, [shelfTagItems]);
+
+  // Compute live sheet layout for printing and preview
+  const sheetLayout = useMemo(() => {
+    return computeShelftagSheetLayout(config, printItems.length);
+  }, [config, printItems.length]);
+
+  // Partition printable items into page chunks for multi-page print document
+  const allPagesChunks = useMemo(() => {
+    const chunks: ShelfTagItem[][] = [];
+    const perSheet = sheetLayout.tagsPerSheet || 1;
+    for (let i = 0; i < printItems.length; i += perSheet) {
+      chunks.push(printItems.slice(i, i + perSheet));
+    }
+    if (chunks.length === 0) chunks.push([]);
+    return chunks;
+  }, [printItems, sheetLayout.tagsPerSheet]);
+
+  const printContainerRef = useRef<HTMLDivElement>(null);
+
   // Top header print & export handlers
   const handlePrintSheet = () => {
-    if (selectedCount === 0) {
+    if (printItems.length === 0) {
       alert('Please select at least one tag to print.');
       return;
     }
-    setActiveTab('preview');
-    setTimeout(() => {
-      window.print();
-    }, 150);
+    const container = printContainerRef.current || document.getElementById('shelftag-print-container');
+    executeShelftagPrint(container, sheetLayout);
   };
 
   const handleExportPdf = async () => {
-    const printItems = shelfTagItems.filter(i => i.isSelected !== false);
     if (printItems.length === 0) {
       alert('Please select at least one tag to export as PDF.');
       return;
@@ -274,8 +297,65 @@ export const ShelfTagPPModule: React.FC<ShelfTagPPModuleProps> = ({
           <LiveSheetPreviewTab
             items={shelfTagItems}
             config={config}
+            onDirectPrint={handlePrintSheet}
           />
         )}
+      </div>
+
+      {/* Dedicated Multi-Page Browser Print Container - Always mounted and ready */}
+      <div
+        id="shelftag-print-container"
+        ref={printContainerRef}
+        className="shelftag-print-container hidden print:block print:w-full print:m-0 print:p-0"
+      >
+        {allPagesChunks.map((chunk, pageIdx) => (
+          <div
+            key={`shelftag-print-page-${pageIdx}`}
+            className="shelftag-print-page bg-white"
+            style={{
+              width: `${sheetLayout.paperWidthMm}mm`,
+              height: `${sheetLayout.paperHeightMm}mm`,
+              paddingTop: `${sheetLayout.topMarginMm}mm`,
+              paddingBottom: `${sheetLayout.bottomMarginMm}mm`,
+              paddingLeft: `${sheetLayout.effectiveLeftMarginMm}mm`,
+              paddingRight: `${sheetLayout.rightMarginMm}mm`,
+              boxSizing: 'border-box',
+              position: 'relative',
+              overflow: 'hidden',
+              pageBreakAfter: pageIdx < allPagesChunks.length - 1 ? 'always' : 'auto',
+              breakAfter: pageIdx < allPagesChunks.length - 1 ? 'page' : 'auto',
+              pageBreakInside: 'avoid',
+              breakInside: 'avoid',
+            }}
+          >
+            <div
+              className="grid"
+              style={{
+                gridTemplateColumns: `repeat(${sheetLayout.columns}, ${sheetLayout.tagWidthMm}mm)`,
+                columnGap: `${sheetLayout.colGapMm}mm`,
+                rowGap: `${sheetLayout.rowGapMm}mm`,
+                width: 'fit-content',
+              }}
+            >
+              {chunk.map(item => (
+                <div
+                  key={`tag-print-${item.id}`}
+                  style={{
+                    width: `${sheetLayout.tagWidthMm}mm`,
+                    height: `${sheetLayout.tagHeightMm}mm`,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <ShelftagCardRenderer
+                    item={item}
+                    config={config}
+                    scale={1}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
