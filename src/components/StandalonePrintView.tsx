@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Printer, ArrowLeft, X, RefreshCw } from 'lucide-react';
 import { InventoryItem, LayoutConfig, InventorySession } from '../types';
+import { DEFAULT_PRINCE_LOGO } from '../utils/theme';
 import { ShelfTag } from './ShelfTag';
 
 interface StandalonePrintViewProps {
@@ -56,7 +57,7 @@ export const StandalonePrintView: React.FC<StandalonePrintViewProps> = ({
             showSessionHeader: false,
             headerStyle: 'filled',
             showLogo: true,
-            logoUrl: '/prince-logo.svg',
+            logoUrl: DEFAULT_PRINCE_LOGO,
             logoHeightMm: 6,
             showTagNumber: true,
             countBoxHeightMm: 12,
@@ -92,7 +93,7 @@ export const StandalonePrintView: React.FC<StandalonePrintViewProps> = ({
         showSessionHeader: false,
         headerStyle: 'filled',
         showLogo: true,
-        logoUrl: '/prince-logo.svg',
+        logoUrl: DEFAULT_PRINCE_LOGO,
         logoHeightMm: 6,
         showTagNumber: true,
         countBoxHeightMm: 12,

@@ -13,7 +13,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { playRetailWelcomeSound } from '../utils/welcomeAudio';
-import { DEFAULT_PRINCE_LOGO, getEffectiveLogoUrl } from '../utils/theme';
+import { DEFAULT_PRINCE_LOGO, PRINCE_LOGO_INLINE_SVG, getEffectiveLogoUrl } from '../utils/theme';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -143,7 +143,10 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (target.src !== PRINCE_LOGO_INLINE_SVG) {
+                    target.src = PRINCE_LOGO_INLINE_SVG;
+                  }
                 }}
               />
             </div>

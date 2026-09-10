@@ -1,4 +1,5 @@
 import { ColorPaletteId, ColorPaletteTheme, SystemSettings } from '../types';
+import princeLogoAsset from '../assets/prince-logo.svg';
 
 export const PALETTES: Record<Exclude<ColorPaletteId, 'custom'>, ColorPaletteTheme> = {
   emerald: {
@@ -87,18 +88,37 @@ export const PALETTES: Record<Exclude<ColorPaletteId, 'custom'>, ColorPaletteThe
   },
 };
 
-export const DEFAULT_PRINCE_LOGO = '/prince-logo.svg';
+// Built-in Prince Retail vector asset as safe inline data URI fallback
+export const PRINCE_LOGO_INLINE_SVG =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%"><circle cx="100" cy="100" r="100" fill="%23FEED01"/><polygon points="100,56 126,76 113,76 100,66 87,76 74,76" fill="%23E31B23"/><text x="100" y="110" fill="%23E31B23" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="900" font-style="italic" font-size="47" letter-spacing="-1.5px">prince</text><polygon points="22,117 178,117 188,125 12,125" fill="%23E31B23"/></svg>';
+
+// Bundled Vite asset URL that resolves correctly under any subpath (e.g. GitHub Pages /PRG-DEC/)
+export const DEFAULT_PRINCE_LOGO = princeLogoAsset || PRINCE_LOGO_INLINE_SVG;
 export const PRINCE_LOGO_JPG = '/prince-logo.jpg';
 
 /**
  * Resolves the effective logo URL with guaranteed fallback to the built-in Prince Retail logo.
- * If user custom logo is missing, empty, or invalid, automatically returns the built-in Prince Retail logo.
+ * If user custom logo is missing, empty, invalid, or an old absolute root path (which 404s on GitHub Pages),
+ * automatically returns the built-in Prince Retail logo asset.
  */
 export function getEffectiveLogoUrl(customUrl?: string | null): string {
   if (!customUrl || typeof customUrl !== 'string' || !customUrl.trim()) {
     return DEFAULT_PRINCE_LOGO;
   }
-  return customUrl.trim();
+  const trimmed = customUrl.trim();
+  // Check if it's the legacy absolute path or default preset that fails on subpaths
+  if (
+    trimmed === '/prince-logo.svg' ||
+    trimmed === 'prince-logo.svg' ||
+    trimmed === '/prince-logo.jpg' ||
+    trimmed === 'prince-logo.jpg' ||
+    trimmed === 'prince' ||
+    trimmed.endsWith('/prince-logo.svg') ||
+    trimmed.endsWith('/prince-logo.jpg')
+  ) {
+    return DEFAULT_PRINCE_LOGO;
+  }
+  return trimmed;
 }
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {

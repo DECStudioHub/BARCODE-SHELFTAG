@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { UploadCloud, FileSpreadsheet, Download, Sparkles, AlertCircle, AlertTriangle, Building2, Calendar, User, FileText, CheckCircle2 } from 'lucide-react';
 import { InventoryItem, InventorySession, ValidationSummary } from '../types';
 import { parseExcelFile, downloadSampleExcelTemplate, SAMPLE_DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
-import { DEFAULT_PRINCE_LOGO, getEffectiveLogoUrl } from '../utils/theme';
+import { DEFAULT_PRINCE_LOGO, PRINCE_LOGO_INLINE_SVG, getEffectiveLogoUrl } from '../utils/theme';
 
 interface Step1ImportProps {
   onDataLoaded: (items: InventoryItem[], summary: ValidationSummary, filename: string) => void;
@@ -107,7 +107,10 @@ export const Step1Import: React.FC<Step1ImportProps> = ({
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (target.src !== PRINCE_LOGO_INLINE_SVG) {
+                    target.src = PRINCE_LOGO_INLINE_SVG;
+                  }
                 }}
               />
             </div>

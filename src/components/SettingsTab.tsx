@@ -32,6 +32,7 @@ import {
   PRESET_LOGOS,
   getPaletteTheme,
   DEFAULT_PRINCE_LOGO,
+  PRINCE_LOGO_INLINE_SVG,
   getEffectiveLogoUrl,
 } from '../utils/theme';
 import { DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
@@ -505,7 +506,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     className="w-full h-full object-contain"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                      const target = e.currentTarget as HTMLImageElement;
+                      if (target.src !== PRINCE_LOGO_INLINE_SVG) {
+                        target.src = PRINCE_LOGO_INLINE_SVG;
+                      }
                     }}
                   />
                 </div>
@@ -870,7 +874,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   className="w-full h-full object-contain"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                    const target = e.currentTarget as HTMLImageElement;
+                    if (target.src !== PRINCE_LOGO_INLINE_SVG) {
+                      target.src = PRINCE_LOGO_INLINE_SVG;
+                    }
                   }}
                 />
               </div>
@@ -905,7 +912,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                       className="w-full h-full object-contain"
                       referrerPolicy="no-referrer"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (target.src !== PRINCE_LOGO_INLINE_SVG) {
+                          target.src = PRINCE_LOGO_INLINE_SVG;
+                        }
                       }}
                     />
                   </div>

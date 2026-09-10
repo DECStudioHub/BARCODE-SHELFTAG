@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Module2Config, ShelfTagItem, TagFieldConfig, TagFieldId } from '../../types';
 import { generateBarcodeSvgString } from '../../utils/barcode';
+import { DEFAULT_PRINCE_LOGO, PRINCE_LOGO_INLINE_SVG, getEffectiveLogoUrl } from '../../utils/theme';
 import { YELLOW_PALETTES } from './constants';
 import {
   ALL_TAG_FIELDS,
@@ -287,10 +288,16 @@ export const ShelftagCardRenderer: React.FC<ShelftagCardRendererProps> = ({
             {/* 9. STORE LOGO FIELD */}
             {meta.id === 'logo' && (layoutPreset.showLogo !== false && config.showLogo !== false) && (
               <img
-                src="/prince-logo.svg"
+                src={getEffectiveLogoUrl(config.logoUrl)}
                 alt="Prince"
                 className="object-contain max-h-full max-w-full"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (target.src !== PRINCE_LOGO_INLINE_SVG) {
+                    target.src = PRINCE_LOGO_INLINE_SVG;
+                  }
+                }}
               />
             )}
           </div>

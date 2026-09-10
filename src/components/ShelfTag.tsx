@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { InventoryItem, LayoutConfig } from '../types';
 import { generateBarcodeSvgString } from '../utils/barcode';
+import { DEFAULT_PRINCE_LOGO } from '../utils/theme';
 
 interface ShelfTagProps {
   item: InventoryItem;
@@ -84,7 +85,7 @@ export const ShelfTag: React.FC<ShelfTagProps> = ({
               }}
               title="Prince Retail"
             >
-              {config.logoUrl && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince' ? (
+              {config.logoUrl && config.logoUrl !== DEFAULT_PRINCE_LOGO && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince' ? (
                 <img
                   src={config.logoUrl}
                   alt="Store Logo"

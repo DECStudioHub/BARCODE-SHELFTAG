@@ -21,6 +21,7 @@ import {
   BoxSelect,
 } from 'lucide-react';
 import { LayoutConfig, BarcodeType, PaperSize, InventoryItem } from '../types';
+import { DEFAULT_PRINCE_LOGO } from '../utils/theme';
 import { ShelfTag } from './ShelfTag';
 
 interface Step3ConfigureProps {
@@ -1085,7 +1086,7 @@ export const Step3Configure: React.FC<Step3ConfigureProps> = ({
                     <div className="flex items-center gap-3">
                       {/* Logo Thumbnail preview */}
                       <div className="w-10 h-10 rounded-full bg-white border border-zinc-200 shadow-2xs flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
-                        {config.logoUrl && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince' ? (
+                        {config.logoUrl && config.logoUrl !== DEFAULT_PRINCE_LOGO && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince' ? (
                           <img
                             src={config.logoUrl}
                             alt="Logo preview"
@@ -1115,12 +1116,12 @@ export const Step3Configure: React.FC<Step3ConfigureProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-bold text-zinc-900">
-                          {config.logoUrl && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince'
+                          {config.logoUrl && config.logoUrl !== DEFAULT_PRINCE_LOGO && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince'
                             ? 'Custom Store Logo'
                             : 'Prince Retail Brand Logo'}
                         </div>
                         <div className="text-[10px] text-zinc-500">
-                          {config.logoUrl && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince'
+                          {config.logoUrl && config.logoUrl !== DEFAULT_PRINCE_LOGO && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince'
                             ? 'User provided image asset'
                             : 'Official yellow & red badge'}
                         </div>
@@ -1173,10 +1174,10 @@ export const Step3Configure: React.FC<Step3ConfigureProps> = ({
                       />
                     </label>
 
-                    {config.logoUrl && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince' && (
+                    {config.logoUrl && config.logoUrl !== DEFAULT_PRINCE_LOGO && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince' && (
                       <button
                         type="button"
-                        onClick={() => onUpdateConfig({ ...config, logoUrl: '/prince-logo.svg' })}
+                        onClick={() => onUpdateConfig({ ...config, logoUrl: DEFAULT_PRINCE_LOGO })}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-900 bg-white border border-zinc-200 rounded-md transition-colors cursor-pointer"
                       >
                         <RotateCcw className="w-3 h-3" />

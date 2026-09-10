@@ -14,6 +14,7 @@ import {
 import { Module2TagType, TagFieldConfig, TagFieldId, TagLayoutPreset } from '../../types';
 import { ALL_TAG_FIELDS, AVAILABLE_FONTS } from './fieldDefaults';
 import { generateBarcodeSvgString } from '../../utils/barcode';
+import { DEFAULT_PRINCE_LOGO, PRINCE_LOGO_INLINE_SVG } from '../../utils/theme';
 
 interface TagFieldVisualEditorProps {
   tagType: Module2TagType;
@@ -586,10 +587,16 @@ export const TagFieldVisualEditor: React.FC<TagFieldVisualEditorProps> = ({
 
                     {meta.id === 'logo' && (
                       <img
-                        src="/prince-logo.svg"
+                        src={DEFAULT_PRINCE_LOGO}
                         alt="Logo"
                         className="object-contain max-h-full max-w-full"
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          if (target.src !== PRINCE_LOGO_INLINE_SVG) {
+                            target.src = PRINCE_LOGO_INLINE_SVG;
+                          }
+                        }}
                       />
                     )}
                   </div>

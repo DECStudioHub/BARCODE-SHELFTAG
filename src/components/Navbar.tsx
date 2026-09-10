@@ -15,7 +15,7 @@ import {
   Database,
 } from 'lucide-react';
 import { AppStep, InventorySession, SystemSettings, AppModuleId } from '../types';
-import { getPaletteTheme, DEFAULT_PRINCE_LOGO, getEffectiveLogoUrl } from '../utils/theme';
+import { getPaletteTheme, DEFAULT_PRINCE_LOGO, PRINCE_LOGO_INLINE_SVG, getEffectiveLogoUrl } from '../utils/theme';
 
 interface NavbarProps {
   activeModule: AppModuleId;
@@ -85,7 +85,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = DEFAULT_PRINCE_LOGO;
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (target.src !== PRINCE_LOGO_INLINE_SVG) {
+                    target.src = PRINCE_LOGO_INLINE_SVG;
+                  }
                 }}
               />
             </div>

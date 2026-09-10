@@ -1,4 +1,5 @@
 import { Module2LayoutConfig, Module2TagType } from '../../types';
+import { DEFAULT_PRINCE_LOGO } from '../../utils/theme';
 
 export const DEFAULT_SHELFTAG_CONFIG: Module2LayoutConfig = {
   presetId: 'standard',
@@ -34,7 +35,7 @@ export const DEFAULT_SHELFTAG_CONFIG: Module2LayoutConfig = {
   showBorder: true,
   showCutGuides: true,
   showLogo: true,
-  logoUrl: '/prince-logo.svg',
+  logoUrl: DEFAULT_PRINCE_LOGO,
   defaultCopies: 1,
 };
 
@@ -72,7 +73,7 @@ export const DEFAULT_PPTAG_CONFIG: Module2LayoutConfig = {
   showBorder: true,
   showCutGuides: true,
   showLogo: true,
-  logoUrl: '/prince-logo.svg',
+  logoUrl: DEFAULT_PRINCE_LOGO,
   defaultCopies: 1,
 };
 
