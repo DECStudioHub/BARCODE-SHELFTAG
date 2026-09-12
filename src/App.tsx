@@ -417,6 +417,7 @@ export default function App() {
         initialItems={items}
         initialConfig={config}
         initialSession={session}
+        settings={settings}
       />
     );
   }
@@ -473,6 +474,7 @@ export default function App() {
               <Step1Import
                 onDataLoaded={handleDataLoaded}
                 session={session}
+                settings={settings}
                 onUpdateSession={handleUpdateSession}
               />
             )}
@@ -504,6 +506,7 @@ export default function App() {
                 items={items}
                 config={config}
                 session={session}
+                settings={settings}
                 onBackToConfig={() => setCurrentStep('configure')}
               />
             )}

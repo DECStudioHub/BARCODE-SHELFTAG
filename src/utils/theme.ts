@@ -106,13 +106,15 @@ export function getEffectiveLogoUrl(customUrl?: string | null): string {
     return DEFAULT_PRINCE_LOGO;
   }
   const trimmed = customUrl.trim();
-  // Check if it's the legacy absolute path or default preset that fails on subpaths
+  // Check if it's the legacy absolute path or default preset identifier that maps to built-in logo
   if (
     trimmed === '/prince-logo.svg' ||
     trimmed === 'prince-logo.svg' ||
     trimmed === '/prince-logo.jpg' ||
     trimmed === 'prince-logo.jpg' ||
     trimmed === 'prince' ||
+    trimmed === 'default' ||
+    trimmed === DEFAULT_PRINCE_LOGO ||
     trimmed.endsWith('/prince-logo.svg') ||
     trimmed.endsWith('/prince-logo.jpg')
   ) {
@@ -127,7 +129,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   systemSubtitle: 'Backup • Continuity • Alternative Process • Process Improvement',
   paletteId: 'emerald',
   customPrimaryColor: '#047857',
-  customLogoUrl: DEFAULT_PRINCE_LOGO,
+  customLogoUrl: null,
   applyLogoToShelfTags: true,
 };
 

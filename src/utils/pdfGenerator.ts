@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { InventoryItem, LayoutConfig, InventorySession } from '../types';
 import { generateBarcodeDataUrl } from './barcode';
+import { packCountTagPages } from './countTagLayoutEngine';
 
 export interface GeneratePdfProgress {
   currentPage: number;
@@ -71,7 +72,10 @@ export async function generateShelfTagsPdf(
   // Calculate how many rows fit on one page
   const rows = Math.max(1, Math.floor((availableHeight + gapY) / (tagHeight + gapY)));
   const tagsPerPage = Math.max(1, cols * rows);
-  const totalPages = Math.max(1, Math.ceil(selectedItems.length / tagsPerPage));
+
+  // Intelligent Count Tag Packing (Locator grouped, Description A-Z, paper-saving packed)
+  const packedPages = packCountTagPages(selectedItems, tagsPerPage);
+  const totalPages = Math.max(1, packedPages.length);
 
   for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
     if (pageIdx > 0) {
@@ -95,7 +99,8 @@ export async function generateShelfTagsPdf(
       doc.text(sessionText, marginLeft, Math.max(3, marginTop - 2));
     }
 
-    const pageItems = selectedItems.slice(pageIdx * tagsPerPage, (pageIdx + 1) * tagsPerPage);
+    const pageData = packedPages[pageIdx];
+    const pageItems = pageData ? pageData.items : [];
 
     for (let i = 0; i < pageItems.length; i++) {
       const item = pageItems[i];

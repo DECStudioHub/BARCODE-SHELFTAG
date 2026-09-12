@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AppStep, InventorySession, SystemSettings, AppModuleId } from '../types';
 import { getPaletteTheme, DEFAULT_PRINCE_LOGO, PRINCE_LOGO_INLINE_SVG, getEffectiveLogoUrl } from '../utils/theme';
+import { VersionBadge } from './VersionBadge';
 
 interface NavbarProps {
   activeModule: AppModuleId;
@@ -76,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }
             }}
             className="flex items-center gap-3 shrink-0 cursor-pointer group"
-            title="DEC — Digital Efficiency & Continuity System"
+            title={`${settings.systemName || 'DEC'} — ${settings.systemTagline || 'Digital Efficiency & Continuity System'}`}
           >
             <div className="w-10 h-10 rounded-lg bg-white border border-zinc-200 shadow-2xs flex items-center justify-center overflow-hidden transition-transform group-hover:scale-105 p-1 shrink-0">
               <img
@@ -95,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-base sm:text-lg tracking-tight text-zinc-900 group-hover:text-black">
-                  DEC
+                  {settings.systemName || 'DEC'}
                 </span>
                 <span
                   className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-sm border transition-colors hidden sm:inline-block"
@@ -105,11 +106,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                     color: activeTheme.primaryText,
                   }}
                 >
-                  Digital Efficiency & Continuity System
+                  {settings.systemTagline || 'Digital Efficiency & Continuity System'}
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 font-medium truncate max-w-[240px] sm:max-w-none">
-                Backup • Continuity • Alternative Process • Process Improvement
+                {settings.systemSubtitle || 'Backup • Continuity • Alternative Process • Process Improvement'}
               </p>
             </div>
           </div>
@@ -158,6 +159,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
             )}
+
+            {/* Interactive System Version Badge & Popover */}
+            <VersionBadge />
 
             {/* System Backup Action */}
             {onOpenBackup && (

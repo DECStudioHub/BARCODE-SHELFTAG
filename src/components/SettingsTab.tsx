@@ -38,6 +38,7 @@ import {
 import { DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
 import { BackupRestoreModal } from './BackupRestoreModal';
 import { exportSystemBackup } from '../utils/systemBackup';
+import { DISPLAY_VERSION } from '../config/version';
 
 interface SettingsTabProps {
   settings: SystemSettings;
@@ -97,9 +98,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     e.preventDefault();
     const updated: SystemSettings = {
       ...settings,
-      systemName: nameInput.trim() || 'SHELF TAG',
-      systemTagline: taglineInput.trim() || 'Inventory System',
-      systemSubtitle: subtitleInput.trim() || 'Excel to Printable Barcode Tags',
+      systemName: nameInput.trim() || 'DEC',
+      systemTagline: taglineInput.trim() || 'Digital Efficiency & Continuity System',
+      systemSubtitle: subtitleInput.trim() || 'Backup • Continuity • Alternative Process • Process Improvement',
     };
     onUpdateSettings(updated);
     showNotification('System identity updated successfully!');
@@ -185,21 +186,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     showNotification('Logo URL applied successfully!');
   };
 
-  const handleSelectPresetLogo = (presetUrl: string) => {
+  const handleSelectPresetLogo = (presetId: string, presetUrl: string) => {
+    const isPrince = presetId === 'prince' || presetUrl === DEFAULT_PRINCE_LOGO;
     const updated: SystemSettings = {
       ...settings,
-      customLogoUrl: presetUrl,
+      customLogoUrl: isPrince ? null : presetUrl,
     };
     onUpdateSettings(updated);
 
     if (settings.applyLogoToShelfTags) {
       onUpdateConfig({
         ...config,
-        logoUrl: presetUrl,
+        logoUrl: isPrince ? DEFAULT_PRINCE_LOGO : presetUrl,
         showLogo: true,
       });
     }
-    showNotification('Preset logo selected!');
+    showNotification(isPrince ? 'Original Prince Retail logo restored!' : 'Preset logo selected!');
   };
 
   const handleToggleShelfTagSync = (checked: boolean) => {
@@ -207,28 +209,27 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       ...settings,
       applyLogoToShelfTags: checked,
     });
-    if (checked && settings.customLogoUrl) {
+    if (checked) {
       onUpdateConfig({
         ...config,
-        logoUrl: settings.customLogoUrl,
+        logoUrl: settings.customLogoUrl || DEFAULT_PRINCE_LOGO,
         showLogo: true,
       });
     }
   };
 
   const handleResetLogo = () => {
-    const defaultLogo = DEFAULT_PRINCE_LOGO;
     onUpdateSettings({
       ...settings,
-      customLogoUrl: defaultLogo,
+      customLogoUrl: null,
     });
     if (settings.applyLogoToShelfTags) {
       onUpdateConfig({
         ...config,
-        logoUrl: defaultLogo,
+        logoUrl: DEFAULT_PRINCE_LOGO,
       });
     }
-    showNotification('Logo reset to default Prince Retail badge.');
+    showNotification('System logo reverted to original built-in Prince Retail logo.');
   };
 
   // 4. Reset execution
@@ -251,13 +252,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         systemSubtitle: 'Backup • Continuity • Alternative Process • Process Improvement',
         paletteId: 'emerald',
         customPrimaryColor: '#047857',
-        customLogoUrl: DEFAULT_PRINCE_LOGO,
+        customLogoUrl: null,
         applyLogoToShelfTags: true,
       });
-      showNotification('Branding and color palette reset to DEC defaults.');
+      if (settings.applyLogoToShelfTags) {
+        onUpdateConfig({
+          ...config,
+          logoUrl: DEFAULT_PRINCE_LOGO,
+        });
+      }
+      showNotification('Branding, identity and logo reset to original DEC defaults.');
     } else if (confirmAction.type === 'factory_reset') {
+      setNameInput('DEC');
+      setTaglineInput('Digital Efficiency & Continuity System');
+      setSubtitleInput('Backup • Continuity • Alternative Process • Process Improvement');
       onFactoryReset();
-      showNotification('System has undergone a full factory reset.', 'info');
+      showNotification('System has undergone a full factory reset to original DEC defaults.', 'info');
     }
 
     setConfirmAction(null);
@@ -276,7 +286,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               <Settings className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-black text-zinc-900 tracking-tight">System Settings</h1>
                 <span
                   className="text-xs font-bold px-2 py-0.5 rounded-full border"
@@ -287,6 +297,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   }}
                 >
                   Customization Hub
+                </span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200">
+                  {DISPLAY_VERSION}
                 </span>
               </div>
               <p className="text-xs text-zinc-500 mt-0.5">
@@ -801,12 +814,15 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {PRESET_LOGOS.map((preset) => {
-                  const isCurrent = settings.customLogoUrl === preset.url;
+                  const isCurrent =
+                    settings.customLogoUrl === preset.url ||
+                    (preset.id === 'prince' &&
+                      (!settings.customLogoUrl || settings.customLogoUrl === DEFAULT_PRINCE_LOGO));
                   return (
                     <button
                       key={preset.id}
                       type="button"
-                      onClick={() => handleSelectPresetLogo(preset.url)}
+                      onClick={() => handleSelectPresetLogo(preset.id, preset.url)}
                       className={`p-3 rounded-lg border text-left flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
                         isCurrent
                           ? 'border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900'

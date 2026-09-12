@@ -14,12 +14,15 @@ import {
 } from 'lucide-react';
 import { playRetailWelcomeSound } from '../utils/welcomeAudio';
 import { DEFAULT_PRINCE_LOGO, PRINCE_LOGO_INLINE_SVG, getEffectiveLogoUrl } from '../utils/theme';
+import { SystemSettings } from '../types';
+import { DISPLAY_VERSION } from '../config/version';
 
 interface WelcomeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoadDemoData: () => void;
   onOpenImport: () => void;
+  settings?: SystemSettings;
 }
 
 export const WelcomeModal: React.FC<WelcomeModalProps> = ({
@@ -27,6 +30,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   onClose,
   onLoadDemoData,
   onOpenImport,
+  settings,
 }) => {
   const [isPlayingSound, setIsPlayingSound] = useState<boolean>(false);
   const playedOnceForOpenRef = useRef<boolean>(false);
@@ -113,32 +117,37 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
 
         {/* Welcome Banner */}
         <div className="text-center space-y-3 pb-5 border-b border-zinc-100">
-          {/* 1. WELCOME */}
-          <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-800 text-xs font-black tracking-widest uppercase shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span>WELCOME</span>
+          {/* 1. WELCOME & Version Pill */}
+          <div className="flex items-center justify-center gap-2">
+            <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-800 text-xs font-black tracking-widest uppercase shadow-2xs">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>WELCOME</span>
+            </div>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-700 text-xs font-mono font-bold">
+              {DISPLAY_VERSION}
+            </span>
           </div>
 
           {/* 2. DEC (Prominent System Title) */}
           <h2 className="text-4xl sm:text-5xl font-black text-zinc-950 tracking-tight text-center">
-            DEC
+            {settings?.systemName || 'DEC'}
           </h2>
 
           {/* 3. Subtitle */}
           <p className="text-base sm:text-lg font-bold text-zinc-800 tracking-tight text-center">
-            Digital Efficiency & Continuity System
+            {settings?.systemTagline || 'Digital Efficiency & Continuity System'}
           </p>
 
           {/* 4. Second descriptive line */}
           <p className="text-xs sm:text-sm font-medium text-zinc-500 tracking-normal text-center max-w-lg mx-auto">
-            Backup • Continuity • Alternative Process • Process Improvement
+            {settings?.systemSubtitle || 'Backup • Continuity • Alternative Process • Process Improvement'}
           </p>
 
           {/* 5. [Prince Retail Logo] — Clearly visible, un-distorted, perfectly centered */}
           <div className="flex items-center justify-center py-1.5">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white border border-zinc-200 shadow-xs p-2 flex items-center justify-center transition-transform hover:scale-105">
               <img
-                src={getEffectiveLogoUrl()}
+                src={getEffectiveLogoUrl(settings?.customLogoUrl)}
                 alt="Prince Retail Logo"
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"

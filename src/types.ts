@@ -300,7 +300,7 @@ export interface SystemSettings {
   systemSubtitle: string;
   paletteId: ColorPaletteId;
   customPrimaryColor?: string;
-  customLogoUrl: string;
+  customLogoUrl: string | null;
   applyLogoToShelfTags: boolean;
 }
 

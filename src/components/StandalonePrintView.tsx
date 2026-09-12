@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Printer, ArrowLeft, X, RefreshCw } from 'lucide-react';
-import { InventoryItem, LayoutConfig, InventorySession } from '../types';
+import { InventoryItem, LayoutConfig, InventorySession, SystemSettings } from '../types';
 import { DEFAULT_PRINCE_LOGO } from '../utils/theme';
 import { ShelfTag } from './ShelfTag';
+import { packCountTagPages } from '../utils/countTagLayoutEngine';
 
 interface StandalonePrintViewProps {
   initialItems?: InventoryItem[];
   initialConfig?: LayoutConfig;
   initialSession?: InventorySession;
+  settings?: SystemSettings;
 }
 
 export const StandalonePrintView: React.FC<StandalonePrintViewProps> = ({
@@ -149,8 +151,8 @@ export const StandalonePrintView: React.FC<StandalonePrintViewProps> = ({
     return { width, height };
   }, [config]);
 
-  // Calculation for tags per page
-  const { tagsPerPage, totalPages } = useMemo(() => {
+  // Calculation for tags per page and paper-saving packing
+  const { tagsPerPage, packedPages, totalPages } = useMemo(() => {
     const availHeight = paperDimensions.height - config.marginTopMm - config.marginBottomMm;
     const cols = Math.max(1, config.columns);
     const tagH = config.tagHeightMm;
@@ -158,9 +160,10 @@ export const StandalonePrintView: React.FC<StandalonePrintViewProps> = ({
 
     const rows = Math.max(1, Math.floor((availHeight + gapY) / (tagH + gapY)));
     const tagsPerPage = Math.max(1, cols * rows);
-    const totalPages = Math.max(1, Math.ceil(selectedItems.length / tagsPerPage));
+    const packedPages = packCountTagPages(selectedItems, tagsPerPage);
+    const totalPages = Math.max(1, packedPages.length);
 
-    return { tagsPerPage, totalPages };
+    return { tagsPerPage, packedPages, totalPages };
   }, [paperDimensions, config, selectedItems]);
 
   // Trigger print automatically after load
@@ -222,9 +225,8 @@ export const StandalonePrintView: React.FC<StandalonePrintViewProps> = ({
 
       {/* Sheets Printable Container */}
       <div className="flex flex-col items-center py-8 gap-8 print:p-0 print:m-0 print:gap-0">
-        {Array.from({ length: totalPages }).map((_, pageIdx) => {
-          const start = pageIdx * tagsPerPage;
-          const pageItems = selectedItems.slice(start, start + tagsPerPage);
+        {packedPages.map((pageData, pageIdx) => {
+          const pageItems = pageData.items;
 
           return (
             <div
@@ -248,6 +250,11 @@ export const StandalonePrintView: React.FC<StandalonePrintViewProps> = ({
                     <strong className="text-black">{session.branch}</strong>
                     {session.store && ` | Store: ${session.store}`}
                     {session.inventoryDate && ` | Date: ${session.inventoryDate}`}
+                    {pageData.locators.length > 0 && (
+                      <span className="ml-2 text-zinc-700">
+                        | Locator: {pageData.locators.join(', ')}
+                      </span>
+                    )}
                   </div>
                   <div>
                     Page {pageIdx + 1} of {totalPages}

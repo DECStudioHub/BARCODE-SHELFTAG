@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileSpreadsheet, Download, Sparkles, AlertCircle, AlertTriangle, Building2, Calendar, User, FileText, CheckCircle2 } from 'lucide-react';
-import { InventoryItem, InventorySession, ValidationSummary } from '../types';
+import { InventoryItem, InventorySession, ValidationSummary, SystemSettings } from '../types';
 import { parseExcelFile, downloadSampleExcelTemplate, SAMPLE_DEMO_ITEMS, revalidateItems } from '../utils/excelParser';
 import { DEFAULT_PRINCE_LOGO, PRINCE_LOGO_INLINE_SVG, getEffectiveLogoUrl } from '../utils/theme';
 
@@ -8,12 +8,14 @@ interface Step1ImportProps {
   onDataLoaded: (items: InventoryItem[], summary: ValidationSummary, filename: string) => void;
   session: InventorySession;
   onUpdateSession: (session: InventorySession) => void;
+  settings?: SystemSettings;
 }
 
 export const Step1Import: React.FC<Step1ImportProps> = ({
   onDataLoaded,
   session,
   onUpdateSession,
+  settings,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,7 +104,7 @@ export const Step1Import: React.FC<Step1ImportProps> = ({
             {/* Built-in Prince Retail Logo */}
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-zinc-200 shadow-2xs p-1.5 flex items-center justify-center shrink-0">
               <img
-                src={getEffectiveLogoUrl()}
+                src={getEffectiveLogoUrl(settings?.customLogoUrl)}
                 alt="Prince Retail Logo"
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"
@@ -121,13 +123,13 @@ export const Step1Import: React.FC<Step1ImportProps> = ({
                 </span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950">
-                DEC
+                {settings?.systemName || 'DEC'}
               </h1>
               <p className="text-sm sm:text-base font-bold text-zinc-800 mt-0.5">
-                Digital Efficiency & Continuity System
+                {settings?.systemTagline || 'Digital Efficiency & Continuity System'}
               </p>
               <p className="text-xs sm:text-sm font-medium text-zinc-500 mt-1">
-                Backup • Continuity • Alternative Process • Process Improvement
+                {settings?.systemSubtitle || 'Backup • Continuity • Alternative Process • Process Improvement'}
               </p>
             </div>
           </div>

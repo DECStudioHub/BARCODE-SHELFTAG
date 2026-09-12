@@ -19,7 +19,7 @@ import {
   Sparkles,
   Info,
 } from 'lucide-react';
-import { InventoryItem, LayoutConfig, InventorySession } from '../types';
+import { InventoryItem, LayoutConfig, InventorySession, SystemSettings } from '../types';
 import { ShelfTag } from './ShelfTag';
 import {
   generateShelfTagsPdf,
@@ -27,11 +27,13 @@ import {
   triggerFileDownload,
 } from '../utils/pdfGenerator';
 import { exportInventoryToExcel } from '../utils/excelParser';
+import { packCountTagPages } from '../utils/countTagLayoutEngine';
 
 interface Step4PreviewProps {
   items: InventoryItem[];
   config: LayoutConfig;
   session: InventorySession;
+  settings?: SystemSettings;
   onBackToConfig: () => void;
 }
 
@@ -47,6 +49,7 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
   items,
   config,
   session,
+  settings,
   onBackToConfig,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -94,8 +97,8 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
     return { width, height };
   }, [config.paperSize, config.customWidthMm, config.customHeightMm, config.orientation]);
 
-  // Tags per page calculation
-  const { tagsPerPage, totalPages, cols, rows } = useMemo(() => {
+  // Tags per page calculation and intelligent Count Tag packing
+  const { tagsPerPage, cols, rows } = useMemo(() => {
     const availHeight = paperDimensions.height - config.marginTopMm - config.marginBottomMm;
     const cols = Math.max(1, config.columns);
     const tagH = config.tagHeightMm;
@@ -103,16 +106,24 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
 
     const rows = Math.max(1, Math.floor((availHeight + gapY) / (tagH + gapY)));
     const tagsPerPage = Math.max(1, cols * rows);
-    const totalPages = Math.max(1, Math.ceil(selectedItems.length / tagsPerPage));
 
-    return { tagsPerPage, totalPages, cols, rows };
-  }, [paperDimensions, config, selectedItems]);
+    return { tagsPerPage, cols, rows };
+  }, [paperDimensions, config]);
 
-  // Items on the current active page
+  const packedPages = useMemo(() => {
+    return packCountTagPages(selectedItems, tagsPerPage);
+  }, [selectedItems, tagsPerPage]);
+
+  const totalPages = Math.max(1, packedPages.length);
+
+  // Active page data and items
+  const currentPageData = useMemo(() => {
+    return packedPages[currentPage - 1] || null;
+  }, [packedPages, currentPage]);
+
   const currentPageItems = useMemo(() => {
-    const start = (currentPage - 1) * tagsPerPage;
-    return selectedItems.slice(start, start + tagsPerPage);
-  }, [selectedItems, currentPage, tagsPerPage]);
+    return currentPageData ? currentPageData.items : [];
+  }, [currentPageData]);
 
   // Handle PDF Generation
   const handleGenerateAndDownloadPdf = async () => {
@@ -678,9 +689,28 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <span className="text-xs font-bold text-zinc-800 font-mono px-2">
-            PAGE {currentPage} OF {totalPages}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-zinc-800 font-mono px-1">
+              SHEET {currentPage} OF {totalPages}
+            </span>
+            {currentPageData && currentPageData.locators.length > 0 && (
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-zinc-100 text-zinc-800 border border-zinc-200">
+                <span className="text-zinc-500 font-medium">Loc:</span>
+                <span className="font-mono text-zinc-950">
+                  {currentPageData.locators.join(', ')}
+                </span>
+                <span className="text-zinc-500 font-normal">
+                  ({currentPageData.totalTags} tag{currentPageData.totalTags > 1 ? 's' : ''})
+                </span>
+              </span>
+            )}
+            {currentPageData?.isMixedLocators && (
+              <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Sparkles className="w-3 h-3" />
+                Paper-Saving Packed
+              </span>
+            )}
+          </div>
 
           <button
             type="button"
@@ -775,6 +805,11 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
                   <strong className="text-zinc-800">{session.branch}</strong>
                   {session.store && ` | Store: ${session.store}`}
                   {session.inventoryDate && ` | Date: ${session.inventoryDate}`}
+                  {currentPageData && currentPageData.locators.length > 0 && (
+                    <span className="ml-2 text-zinc-700">
+                      | Locator: {currentPageData.locators.join(', ')}
+                    </span>
+                  )}
                 </div>
                 <div>
                   Page {currentPage} of {totalPages}
@@ -798,14 +833,23 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
         ) : (
           /* All Sheets View */
           <div className="space-y-8">
-            {Array.from({ length: totalPages }).map((_, pageIdx) => {
-              const start = pageIdx * tagsPerPage;
-              const pageItems = selectedItems.slice(start, start + tagsPerPage);
+            {packedPages.map((pageData, pageIdx) => {
+              const pageItems = pageData.items;
 
               return (
                 <div key={pageIdx} className="space-y-2">
-                  <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider text-center">
-                    Sheet {pageIdx + 1} of {totalPages}
+                  <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider text-center flex flex-wrap items-center justify-center gap-2">
+                    <span>Sheet {pageIdx + 1} of {totalPages}</span>
+                    {pageData.locators.length > 0 && (
+                      <span className="font-mono text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded-xs">
+                        Locator: {pageData.locators.join(', ')} ({pageData.totalTags} tag{pageData.totalTags > 1 ? 's' : ''})
+                      </span>
+                    )}
+                    {pageData.isMixedLocators && (
+                      <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 text-[10px] px-1.5 py-0.5 rounded-full">
+                        Paper-Saving Packed
+                      </span>
+                    )}
                   </div>
                   <div
                     className="bg-white shadow-xl origin-top border border-zinc-300"
@@ -827,6 +871,11 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
                         <div>
                           <strong className="text-zinc-800">{session.branch}</strong>
                           {session.store && ` | Store: ${session.store}`}
+                          {pageData.locators.length > 0 && (
+                            <span className="ml-2 text-zinc-700">
+                              | Locator: {pageData.locators.join(', ')}
+                            </span>
+                          )}
                         </div>
                         <div>
                           Page {pageIdx + 1} of {totalPages}
@@ -855,9 +904,8 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
 
       {/* 4. DEDICATED NATIVE PRINT CONTAINER (Hidden on screen, rendered into print window and during @media print) */}
       <div ref={printContainerRef} className="hidden print:block print:w-full print:m-0 print:p-0">
-        {Array.from({ length: totalPages }).map((_, pageIdx) => {
-          const start = pageIdx * tagsPerPage;
-          const pageItems = selectedItems.slice(start, start + tagsPerPage);
+        {packedPages.map((pageData, pageIdx) => {
+          const pageItems = pageData.items;
 
           return (
             <div
@@ -881,6 +929,11 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
                     <strong className="text-black">{session.branch}</strong>
                     {session.store && ` | Store: ${session.store}`}
                     {session.inventoryDate && ` | Date: ${session.inventoryDate}`}
+                    {pageData.locators.length > 0 && (
+                      <span className="ml-2 text-zinc-700">
+                        | Locator: {pageData.locators.join(', ')}
+                      </span>
+                    )}
                   </div>
                   <div>
                     Page {pageIdx + 1} of {totalPages}
