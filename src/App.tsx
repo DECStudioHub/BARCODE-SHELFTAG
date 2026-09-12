@@ -62,6 +62,7 @@ const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   countBoxGapTopMm: 2.5,
   countBoxFontSize: 13,
   countBoxBorderWidth: 2,
+  barcodeWidthMm: 42,
 };
 
 const DEFAULT_SESSION: InventorySession = {

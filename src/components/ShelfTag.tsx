@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { InventoryItem, LayoutConfig } from '../types';
 import { generateBarcodeSvgString } from '../utils/barcode';
 import { DEFAULT_PRINCE_LOGO } from '../utils/theme';
@@ -16,17 +16,40 @@ export const ShelfTag: React.FC<ShelfTagProps> = ({
   scale = 1,
   className = '',
 }) => {
+  const [imgError, setImgError] = useState(false);
+
   const barcodeSvg = useMemo(() => {
+    const widthMm = Number(config.barcodeWidthMm) > 0 ? Number(config.barcodeWidthMm) : 42;
     return generateBarcodeSvgString(
       item.barcode || item.upcNo,
       config.barcodeType,
       Math.max(28, Math.round(config.barcodeHeightMm * 2.8)),
       true,
-      11
+      11,
+      widthMm
     );
-  }, [item.barcode, item.upcNo, config.barcodeType, config.barcodeHeightMm]);
+  }, [item.barcode, item.upcNo, config.barcodeType, config.barcodeHeightMm, config.barcodeWidthMm]);
 
   const isBlank = config.printBlankCountFields;
+
+  const isCustomImage = useMemo(() => {
+    if (!config.logoUrl || imgError) return false;
+    const url = config.logoUrl.trim();
+    if (
+      url === DEFAULT_PRINCE_LOGO ||
+      url === '/prince-logo.svg' ||
+      url === 'prince-logo.svg' ||
+      url === '/prince-logo.jpg' ||
+      url === 'prince-logo.jpg' ||
+      url === 'prince' ||
+      url === 'default' ||
+      url.endsWith('/prince-logo.svg') ||
+      url.endsWith('/prince-logo.jpg')
+    ) {
+      return false;
+    }
+    return url.startsWith('data:image/') || url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://');
+  }, [config.logoUrl, imgError]);
 
   return (
     <div
@@ -85,11 +108,12 @@ export const ShelfTag: React.FC<ShelfTagProps> = ({
               }}
               title="Prince Retail"
             >
-              {config.logoUrl && config.logoUrl !== DEFAULT_PRINCE_LOGO && config.logoUrl !== '/prince-logo.svg' && config.logoUrl !== 'prince' ? (
+              {isCustomImage ? (
                 <img
-                  src={config.logoUrl}
+                  src={config.logoUrl!}
                   alt="Store Logo"
                   className="w-full h-full object-contain rounded-full"
+                  onError={() => setImgError(true)}
                   referrerPolicy="no-referrer"
                 />
               ) : (
@@ -150,11 +174,15 @@ export const ShelfTag: React.FC<ShelfTagProps> = ({
           {/* Barcode Graphic */}
           <div
             className="flex items-center justify-center overflow-hidden max-w-full"
-            style={{ minHeight: `${(config.barcodeHeightMm || 14) * scale * 0.85}mm` }}
+            style={{
+              height: `${(config.barcodeHeightMm || 14) * scale * 0.92}mm`,
+              width: `${(config.barcodeWidthMm || 42) * scale}mm`,
+              maxWidth: '96%',
+            }}
           >
             {barcodeSvg ? (
               <div
-                className="flex justify-center max-w-full [&>svg]:max-w-full [&>svg]:h-auto"
+                className="flex items-center justify-center w-full h-full [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
                 dangerouslySetInnerHTML={{ __html: barcodeSvg }}
               />
             ) : (

@@ -33,6 +33,30 @@ export const SYSTEM_SUBTITLE = 'Backup • Continuity • Alternative Process �
 
 export const DEC_RELEASES: SystemRelease[] = [
   {
+    version: '2.0.1',
+    releaseDate: 'September 12, 2026',
+    releaseType: 'patch',
+    title: 'Count Sheet Ink-Saving Print Engine & Welcome UI Update',
+    summary:
+      'Official DEC v2.0.1 release optimizing Count Sheet printing with dynamic actual SKU rows, ink-saving table termination, empty SKU group omission, and Welcome UI synchronization.',
+    highlights: [
+      'Count Sheet Ink-Saving Fix: Rows Per Page is strictly treated as maximum capacity; table terminates immediately after the last actual SKU row without forced empty bordered rows',
+      'Dynamic Table Height: Print preview, browser print, and vector PDF dynamically shrink table dimensions to fit actual SKU count (e.g. 5 SKUs = 5 rows, not 15)',
+      'No SKU Data = No Table: Empty locators or groups with zero valid SKU records cleanly omit the table area entirely, preventing wasteful blank bordered boxes',
+      'Rigorous SKU Data Validation: Discards empty records and phantom objects so only valid inventory items generate table rows',
+      'Multi-Page Ink Efficiency: Large locators split cleanly across pages (e.g. 20 SKUs at 15/page yields Page 1 with 15 rows and Page 2 with 5 rows)',
+      'Preview, Print, and PDF Parity: Screen preview, browser print preview, native print output, and downloaded PDF use identical dynamic row rendering logic',
+      'Welcome UI Synchronization: System-wide display updated to DEC v2.0.1 while preserving full branding and audio welcome chime',
+    ],
+    changes: [
+      { type: 'improvement', text: 'Treated Count Sheet Rows Per Page strictly as a maximum capacity rather than a requirement to fill the page' },
+      { type: 'fix', text: 'Eliminated unnecessary empty bordered table rows from Count Sheet live preview, browser print, and PDF generation' },
+      { type: 'feature', text: 'Omitted Count Sheet table structure entirely when a locator contains zero valid SKU records' },
+      { type: 'improvement', text: 'Validated SKU records to ignore empty objects, preventing phantom row creation' },
+      { type: 'feature', text: 'Updated Welcome UI and system metadata to display DEC v2.0.1' },
+    ],
+  },
+  {
     version: '2.0.0',
     releaseDate: 'September 12, 2026',
     releaseType: 'major',
@@ -40,18 +64,22 @@ export const DEC_RELEASES: SystemRelease[] = [
     summary:
       'Official DEC v2.0.0 milestone consolidating dual-module inventory workflows, paper-saving slot packing, theme customization, and validated system backup.',
     highlights: [
+      'Filter Locator for Count Tags: Filter and print specific locators with Select All, Clear All, Invert, and live tag count tracking without altering original Excel data',
+      'Count Tag Printed Indicator: Dynamic tracking of printed locators across browser print and PDF export with full reprint support and print status reset',
+      'Optimized Count Sheet Rows: Rows per page is now treated as a maximum, eliminating forced empty rows and tightening table borders to actual items',
+      'Independent Barcode Width: Precision barcode width control in millimeters, rendered consistently across screen preview, browser print, and PDF',
+      'Production Print Fix for GitHub Pages: Correctly resolved stylesheet links and base URLs for reliable printing under repository subpath deployments',
+      'Guaranteed Logo Rendering: Vector Prince Retail logo fallback and custom data URL support ensures logos never go missing during printing or export',
       'Intelligent Count Tag Packing: Eliminates wasted tag slots by grouping items by locator and packing sheets efficiently',
       'Dual-Module Operations: Seamless switching between Physical Inventory Count Tags/Sheets and Retail ShelfTag / Promo PP Tags',
-      'System Identity & Theme Hub: Editable system branding, custom logo upload, reliable Prince Retail logo reset, and 7 color palettes',
-      '1:1 Print & PDF Parity: Screen preview, browser print dialog, and high-resolution PDF downloads share identical layouts',
-      'System Backup & Restore: Complete state export and import with validated schema version 2.0',
-      'Audio & Welcome Experience: Synthesized retail welcome chime and interactive quick-start guide',
     ],
     changes: [
-      { type: 'feature', text: 'Added packCountTagPages engine to group locators and maximize tags per sheet' },
-      { type: 'feature', text: 'Integrated interactive Version Information popover with release history' },
-      { type: 'improvement', text: 'Harmonized StandalonePrintView and PDF generation with on-screen preview' },
-      { type: 'fix', text: 'Fixed logo reset and factory reset to reliably restore default Prince Retail SVG logo' },
+      { type: 'feature', text: 'Added Filter Locator panel to Count Tags with checkboxes, select all/clear, and real-time page count' },
+      { type: 'feature', text: 'Added Printed Indicator badge system for Count Tags with reprint ability and reset option' },
+      { type: 'feature', text: 'Added independent Barcode Width setting (in mm) for Count Tags with PDF and print parity' },
+      { type: 'improvement', text: 'Removed forced empty row rendering on Count Sheets, respecting rows per page as a maximum' },
+      { type: 'fix', text: 'Fixed GitHub Pages production print layout by fully qualifying stylesheet links and document base URI' },
+      { type: 'fix', text: 'Fixed store logo display during print and PDF generation with inline vector SVG fallback' },
     ],
   },
   {

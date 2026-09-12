@@ -426,10 +426,17 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
 
     if (printWin && printHtml) {
       try {
+        const baseHref = document.baseURI || window.location.href.split('#')[0].split('?')[0].replace(/\/[^\/]*$/, '/');
         const currentStyles = Array.from(
           document.querySelectorAll('style, link[rel="stylesheet"]')
         )
-          .map(el => el.outerHTML)
+          .map(el => {
+            if (el.tagName.toLowerCase() === 'link') {
+              const link = el as HTMLLinkElement;
+              return `<link rel="stylesheet" href="${link.href}">`;
+            }
+            return el.outerHTML;
+          })
           .join('\n');
 
         const paperDims = getCountSheetPaperDimensions(
@@ -444,7 +451,7 @@ export const CountSheetGenerator: React.FC<CountSheetGeneratorProps> = ({
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <base href="${window.location.origin}/">
+  <base href="${baseHref}">
   <title>Count Sheet - ${config.paperSize} (${pages.length} Pages)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${currentStyles}

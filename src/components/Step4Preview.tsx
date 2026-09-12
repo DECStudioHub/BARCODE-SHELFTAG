@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Printer,
   FileDown,
@@ -18,6 +18,11 @@ import {
   Layers,
   Sparkles,
   Info,
+  Filter,
+  CheckSquare,
+  Square,
+  RotateCcw,
+  Check,
 } from 'lucide-react';
 import { InventoryItem, LayoutConfig, InventorySession, SystemSettings } from '../types';
 import { ShelfTag } from './ShelfTag';
@@ -75,9 +80,162 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
 
   const printContainerRef = useRef<HTMLDivElement>(null);
 
-  const selectedItems = useMemo(() => {
-    return items.filter(it => it.isSelected !== false);
+  // Group and count tags per locator from items
+  const locatorCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach(it => {
+      if (it.isSelected === false) return;
+      const loc = (it.locator && String(it.locator).trim()) || 'UNASSIGNED';
+      map.set(loc, (map.get(loc) || 0) + 1);
+    });
+    const result: { locator: string; count: number }[] = [];
+    map.forEach((count, locator) => {
+      result.push({ locator, count });
+    });
+    return result.sort((a, b) =>
+      a.locator.localeCompare(b.locator, undefined, { numeric: true, sensitivity: 'base' })
+    );
   }, [items]);
+
+  const allLocators = useMemo(() => {
+    return locatorCounts.map(lc => lc.locator);
+  }, [locatorCounts]);
+
+  const datasetFingerprint = useMemo(() => {
+    if (!items || items.length === 0) return 'empty';
+    const first = items[0];
+    const last = items[items.length - 1];
+    const firstKey = first ? `${first.sku || first.id || ''}_${first.locator || ''}` : '';
+    const lastKey = last ? `${last.sku || last.id || ''}_${last.locator || ''}` : '';
+    return `ct_ds_${items.length}_${firstKey}_${lastKey}`;
+  }, [items]);
+
+  // Selected Locators Filter state (default: all locators active)
+  const [selectedLocators, setSelectedLocators] = useState<Set<string>>(() => {
+    return new Set(locatorCounts.map(lc => lc.locator));
+  });
+
+  const prevFingerprintRef = useRef<string>(datasetFingerprint);
+  useEffect(() => {
+    if (prevFingerprintRef.current !== datasetFingerprint) {
+      prevFingerprintRef.current = datasetFingerprint;
+      setSelectedLocators(new Set(allLocators));
+      setCurrentPage(1);
+    }
+  }, [datasetFingerprint, allLocators]);
+
+  // Printed Locators Tracker (persists per dataset, preserves reprint capability)
+  const [printedLocators, setPrintedLocators] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`count_tag_printed_${datasetFingerprint}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return new Set(parsed);
+      }
+    } catch {}
+    return new Set<string>();
+  });
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`count_tag_printed_${datasetFingerprint}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setPrintedLocators(new Set(parsed));
+          return;
+        }
+      }
+    } catch {}
+    setPrintedLocators(new Set<string>());
+  }, [datasetFingerprint]);
+
+  const markLocatorsAsPrinted = (locs: string[]) => {
+    if (locs.length === 0) return;
+    setPrintedLocators(prev => {
+      const updated = new Set(prev);
+      locs.forEach(l => updated.add(l));
+      try {
+        localStorage.setItem(
+          `count_tag_printed_${datasetFingerprint}`,
+          JSON.stringify(Array.from(updated))
+        );
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleResetPrintStatus = () => {
+    setPrintedLocators(new Set());
+    try {
+      localStorage.removeItem(`count_tag_printed_${datasetFingerprint}`);
+    } catch {}
+  };
+
+  const [locatorSearch, setLocatorSearch] = useState<string>('');
+  const filteredLocatorCounts = useMemo(() => {
+    if (!locatorSearch.trim()) return locatorCounts;
+    const q = locatorSearch.trim().toLowerCase();
+    return locatorCounts.filter(lc => lc.locator.toLowerCase().includes(q));
+  }, [locatorCounts, locatorSearch]);
+
+  const handleToggleLocator = (loc: string) => {
+    setSelectedLocators(prev => {
+      const updated = new Set(prev);
+      if (updated.has(loc)) {
+        updated.delete(loc);
+      } else {
+        updated.add(loc);
+      }
+      return updated;
+    });
+    setCurrentPage(1);
+  };
+
+  const handleSelectAllLocators = () => {
+    setSelectedLocators(new Set(allLocators));
+    setCurrentPage(1);
+  };
+
+  const handleClearAllLocators = () => {
+    setSelectedLocators(new Set());
+    setCurrentPage(1);
+  };
+
+  const handleInvertLocators = () => {
+    setSelectedLocators(prev => {
+      const updated = new Set<string>();
+      allLocators.forEach(l => {
+        if (!prev.has(l)) updated.add(l);
+      });
+      return updated;
+    });
+    setCurrentPage(1);
+  };
+
+  const activeLocatorsArray = useMemo(() => {
+    return allLocators.filter(l => selectedLocators.has(l));
+  }, [allLocators, selectedLocators]);
+
+  // Selected items filtered by active locators (without modifying source items)
+  const selectedItems = useMemo(() => {
+    return items.filter(it => {
+      if (it.isSelected === false) return false;
+      const loc = (it.locator && String(it.locator).trim()) || 'UNASSIGNED';
+      return selectedLocators.has(loc);
+    });
+  }, [items, selectedLocators]);
+
+  // Listen for successful print events from standalone print windows
+  useEffect(() => {
+    const handleMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'COUNT_TAGS_PRINTED_SUCCESS' && activeLocatorsArray.length > 0) {
+        markLocatorsAsPrinted(activeLocatorsArray);
+      }
+    };
+    window.addEventListener('message', handleMsg);
+    return () => window.removeEventListener('message', handleMsg);
+  }, [activeLocatorsArray]);
 
   // Paper dimensions in mm
   const paperDimensions = useMemo(() => {
@@ -162,6 +320,8 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
         doc: doc,
       });
       setShowPdfModal(true);
+      // Mark active locators as printed upon successful PDF generation
+      markLocatorsAsPrinted(activeLocatorsArray);
     } catch (err: any) {
       console.error('PDF Generation error:', err);
       setErrorMessage(
@@ -196,10 +356,17 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
 
     if (printWin && printHtml) {
       try {
+        const baseHref = document.baseURI || window.location.href.split('#')[0].split('?')[0].replace(/\/[^\/]*$/, '/');
         const currentStyles = Array.from(
           document.querySelectorAll('style, link[rel="stylesheet"]')
         )
-          .map(el => el.outerHTML)
+          .map(el => {
+            if (el.tagName.toLowerCase() === 'link') {
+              const link = el as HTMLLinkElement;
+              return `<link rel="stylesheet" href="${link.href}">`;
+            }
+            return el.outerHTML;
+          })
           .join('\n');
 
         const title = `Print Shelf Tags - ${config.paperSize} (${selectedItems.length} tags)`;
@@ -209,7 +376,7 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <base href="${window.location.origin}/">
+  <base href="${baseHref}">
   <title>${title}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${currentStyles}
@@ -316,6 +483,13 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
         console.warn('Auto print call:', err);
       }
     }
+    window.onafterprint = function() {
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: 'COUNT_TAGS_PRINTED_SUCCESS' }, '*');
+        }
+      } catch (e) {}
+    };
     if (document.readyState === 'complete') {
       setTimeout(triggerPrint, 400);
     } else {
@@ -328,6 +502,7 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
 </html>`);
         printWin.document.close();
         setIsPrinting(false);
+        markLocatorsAsPrinted(activeLocatorsArray);
 
         setPrintNotification({
           type: 'success',
@@ -675,6 +850,140 @@ export const Step4Preview: React.FC<Step4PreviewProps> = ({
           </div>
         )}
       </div>
+
+      {/* COUNT TAG FILTER LOCATOR & PRINTED INDICATOR PANEL */}
+      {locatorCounts.length > 0 && (
+        <div className="bg-white rounded-xl border border-zinc-200 shadow-xs p-4 print:hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200">
+                <Filter className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-xs font-bold text-zinc-900 tracking-wide uppercase">
+                    Count Tag Filter Locator
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 font-mono">
+                    {selectedLocators.size} of {allLocators.length} Locators Selected
+                  </span>
+                  <span className="text-[11px] text-zinc-500 font-mono">
+                    ({selectedItems.length} tags · {totalPages} sheets)
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-0.5">
+                  Select specific locators to print. Filtered views do not modify imported Excel data. Printed status updates automatically on print or PDF export.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleSelectAllLocators}
+                className="px-2.5 py-1 text-xs font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 border border-zinc-300 rounded-lg transition-colors cursor-pointer"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAllLocators}
+                className="px-2.5 py-1 text-xs font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 border border-zinc-300 rounded-lg transition-colors cursor-pointer"
+              >
+                Clear All
+              </button>
+              <button
+                type="button"
+                onClick={handleInvertLocators}
+                className="px-2.5 py-1 text-xs font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 border border-zinc-300 rounded-lg transition-colors cursor-pointer"
+              >
+                Invert
+              </button>
+              {printedLocators.size > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetPrintStatus}
+                  title="Reset printed marks for this dataset"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:text-rose-600 bg-zinc-50 hover:bg-rose-50 border border-zinc-300 hover:border-rose-300 rounded-lg transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset Printed Marks ({printedLocators.size})
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Search bar if many locators */}
+          {locatorCounts.length > 5 && (
+            <div className="pt-3">
+              <input
+                type="text"
+                value={locatorSearch}
+                onChange={e => setLocatorSearch(e.target.value)}
+                placeholder="Search locator code..."
+                className="w-full sm:w-64 px-2.5 py-1 text-xs border border-zinc-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+              />
+            </div>
+          )}
+
+          {/* Locator Checkbox Grid */}
+          <div className="mt-3 max-h-52 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            {filteredLocatorCounts.map(({ locator, count }) => {
+              const isChecked = selectedLocators.has(locator);
+              const isPrinted = printedLocators.has(locator);
+
+              return (
+                <div
+                  key={locator}
+                  onClick={() => handleToggleLocator(locator)}
+                  className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-all ${
+                    isChecked
+                      ? 'bg-emerald-50/60 border-emerald-300 text-zinc-900 shadow-2xs'
+                      : 'bg-zinc-50/70 border-zinc-200 text-zinc-500 opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors ${
+                        isChecked
+                          ? 'bg-emerald-700 border-emerald-700 text-white'
+                          : 'border-zinc-300 bg-white text-transparent'
+                      }`}
+                    >
+                      <Check className="w-3 h-3" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold font-mono truncate text-zinc-900" title={locator}>
+                        {locator}
+                      </div>
+                      <div className="text-[10px] text-zinc-500">
+                        {count} tag{count > 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Printed Indicator Badge */}
+                  <div className="shrink-0 ml-1.5">
+                    {isPrinted ? (
+                      <span
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white shadow-2xs"
+                        title="Printed — can still be reprinted at any time"
+                      >
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        PRINTED
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-zinc-200 text-zinc-600">
+                        PENDING
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 2. Interactive Navigation & Zoom Bar (Hidden during print) */}
       <div className="bg-white rounded-xl border border-zinc-200 shadow-xs p-3 flex flex-wrap items-center justify-between gap-3 print:hidden">

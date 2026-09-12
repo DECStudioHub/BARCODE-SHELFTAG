@@ -9,6 +9,7 @@ import {
 import {
   getCountSheetPaperDimensions,
   paginateCountSheetItems,
+  isValidCountSheetItem,
 } from './countSheetLayoutEngine';
 import {
   generateBarcodeDataUrl,
@@ -312,109 +313,110 @@ export async function generateCountSheetPdf(
     currentY += 1.5;
 
     // ==========================================
-    // 2. TABLE HEADER
+    // 2. TABLE (HEADER + BODY) — Dynamic Ink-Saving Table
     // ==========================================
     const tableStartY = currentY;
     const headerRowHeight = 6.5;
+    const validItems = (pageData.items || []).filter(isValidCountSheetItem);
 
-    // Header Background fill
-    doc.setFillColor(241, 245, 249);
-    doc.rect(marginLeft, tableStartY, printableWidth, headerRowHeight, 'F');
+    if (validItems.length > 0) {
+      // Header Background fill
+      doc.setFillColor(241, 245, 249);
+      doc.rect(marginLeft, tableStartY, printableWidth, headerRowHeight, 'F');
 
-    // Header Text & Vertical Lines
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(Math.max(7, Number(config.headerFontSizePt) || 8.5));
-    doc.setTextColor(15, 23, 42);
+      // Header Text & Vertical Lines
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(Math.max(7, Number(config.headerFontSizePt) || 8.5));
+      doc.setTextColor(15, 23, 42);
 
-    let curColX = marginLeft;
+      let curColX = marginLeft;
 
-    // Optional Row Numbers Header
-    if (config.showRowNumbers !== false) {
-      doc.text('#', curColX + rowNumWidth / 2, tableStartY + 4.5, { align: 'center' });
-      if (innerVertLineWidth > 0) {
-        doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-        doc.setLineWidth(innerVertLineWidth);
-        doc.line(curColX + rowNumWidth, tableStartY, curColX + rowNumWidth, tableStartY + headerRowHeight);
-      }
-      curColX += rowNumWidth;
-    }
-
-    activeColumns.forEach((colId, cIdx) => {
-      const colW = colWidthsMap[colId];
-      const isLast = cIdx === activeColumns.length - 1;
-
-      let colTitle = 'COLUMN';
-      let align: 'left' | 'center' | 'right' = 'left';
-
-      if (colId === 'sku') {
-        colTitle = 'SKU';
-        align = config.tableHeaderAlign === 'center' ? 'center' : 'left';
-      } else if (colId === 'barcode') {
-        colTitle = 'BARCODE';
-        align = 'center';
-      } else if (colId === 'description') {
-        colTitle = 'DESCRIPTION';
-        align = config.tableHeaderAlign === 'center' ? 'center' : 'left';
-      } else if (colId === 'count') {
-        colTitle = 'COUNT';
-        align = 'center';
-      }
-
-      const textX = align === 'center' ? curColX + colW / 2 : curColX + 2;
-      doc.text(colTitle, textX, tableStartY + 4.5, { align });
-
-      if (!isLast && innerVertLineWidth > 0) {
-        doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-        doc.setLineWidth(innerVertLineWidth);
-        doc.line(curColX + colW, tableStartY, curColX + colW, tableStartY + headerRowHeight);
-      }
-
-      curColX += colW;
-    });
-
-    // Header Bottom Line
-    if (headerBottomLineWidth > 0) {
-      doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-      doc.setLineWidth(headerBottomLineWidth);
-      doc.line(marginLeft, tableStartY + headerRowHeight, marginLeft + printableWidth, tableStartY + headerRowHeight);
-    }
-
-    currentY = tableStartY + headerRowHeight;
-
-    // ==========================================
-    // 3. TABLE BODY ROWS
-    // ==========================================
-    const items = pageData.items || [];
-    const bodyStartY = currentY;
-
-    for (let rIdx = 0; rIdx < totalRows; rIdx++) {
-      const item = items[rIdx];
-      const rowY = bodyStartY + (rIdx * rowHeight);
-      const rowNum = pageData.startIndex + rIdx + 1;
-
-      let rowColX = marginLeft;
-
-      // Row Number Cell
+      // Optional Row Numbers Header
       if (config.showRowNumbers !== false) {
-        doc.setFont('courier', 'bold');
-        doc.setFontSize(7.5);
-        doc.setTextColor(item ? 100 : 180, item ? 116 : 180, item ? 139 : 180);
-        doc.text(String(rowNum), rowColX + rowNumWidth / 2, rowY + (rowHeight / 2) + 1.2, { align: 'center' });
-
+        doc.text('#', curColX + rowNumWidth / 2, tableStartY + 4.5, { align: 'center' });
         if (innerVertLineWidth > 0) {
           doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
           doc.setLineWidth(innerVertLineWidth);
-          doc.line(rowColX + rowNumWidth, rowY, rowColX + rowNumWidth, rowY + rowHeight);
+          doc.line(curColX + rowNumWidth, tableStartY, curColX + rowNumWidth, tableStartY + headerRowHeight);
         }
-        rowColX += rowNumWidth;
+        curColX += rowNumWidth;
       }
 
-      // Column Cells
       activeColumns.forEach((colId, cIdx) => {
         const colW = colWidthsMap[colId];
         const isLast = cIdx === activeColumns.length - 1;
 
-        if (item) {
+        let colTitle = 'COLUMN';
+        let align: 'left' | 'center' | 'right' = 'left';
+
+        if (colId === 'sku') {
+          colTitle = 'SKU';
+          align = config.tableHeaderAlign === 'center' ? 'center' : 'left';
+        } else if (colId === 'barcode') {
+          colTitle = 'BARCODE';
+          align = 'center';
+        } else if (colId === 'description') {
+          colTitle = 'DESCRIPTION';
+          align = config.tableHeaderAlign === 'center' ? 'center' : 'left';
+        } else if (colId === 'count') {
+          colTitle = 'COUNT';
+          align = 'center';
+        }
+
+        const textX = align === 'center' ? curColX + colW / 2 : curColX + 2;
+        doc.text(colTitle, textX, tableStartY + 4.5, { align });
+
+        if (!isLast && innerVertLineWidth > 0) {
+          doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
+          doc.setLineWidth(innerVertLineWidth);
+          doc.line(curColX + colW, tableStartY, curColX + colW, tableStartY + headerRowHeight);
+        }
+
+        curColX += colW;
+      });
+
+      // Header Bottom Line
+      if (headerBottomLineWidth > 0) {
+        doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
+        doc.setLineWidth(headerBottomLineWidth);
+        doc.line(marginLeft, tableStartY + headerRowHeight, marginLeft + printableWidth, tableStartY + headerRowHeight);
+      }
+
+      currentY = tableStartY + headerRowHeight;
+
+      // ==========================================
+      // 3. TABLE BODY ROWS — Strictly valid SKU records only
+      // ==========================================
+      const bodyStartY = currentY;
+      const rowsToRenderCount = validItems.length;
+
+      for (let rIdx = 0; rIdx < rowsToRenderCount; rIdx++) {
+        const item = validItems[rIdx];
+        const rowY = bodyStartY + (rIdx * rowHeight);
+        const rowNum = pageData.startIndex + rIdx + 1;
+
+        let rowColX = marginLeft;
+
+        // Row Number Cell
+        if (config.showRowNumbers !== false) {
+          doc.setFont('courier', 'bold');
+          doc.setFontSize(7.5);
+          doc.setTextColor(100, 116, 139);
+          doc.text(String(rowNum), rowColX + rowNumWidth / 2, rowY + (rowHeight / 2) + 1.2, { align: 'center' });
+
+          if (innerVertLineWidth > 0) {
+            doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
+            doc.setLineWidth(innerVertLineWidth);
+            doc.line(rowColX + rowNumWidth, rowY, rowColX + rowNumWidth, rowY + rowHeight);
+          }
+          rowColX += rowNumWidth;
+        }
+
+        // Column Cells
+        activeColumns.forEach((colId, cIdx) => {
+          const colW = colWidthsMap[colId];
+          const isLast = cIdx === activeColumns.length - 1;
+
           if (colId === 'sku') {
             doc.setFont('courier', 'bold');
             doc.setFontSize(Math.max(7, Number(config.skuFontSizePt) || 8.5));
@@ -475,46 +477,49 @@ export async function generateCountSheetPdf(
             const lineX = rowColX + (colW - lineW) / 2;
             doc.line(lineX, rowY + rowHeight - 2.5, lineX + lineW, rowY + rowHeight - 2.5);
           }
-        } else {
-          // Empty row
-          if (colId === 'count') {
-            doc.setDrawColor(226, 232, 240); // slate-200
-            doc.setLineWidth(0.2);
-            const lineW = colW * 0.75;
-            const lineX = rowColX + (colW - lineW) / 2;
-            doc.line(lineX, rowY + rowHeight - 2.5, lineX + lineW, rowY + rowHeight - 2.5);
+
+          // Inner Vertical Column Line
+          if (!isLast && innerVertLineWidth > 0) {
+            doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
+            doc.setLineWidth(innerVertLineWidth);
+            doc.line(rowColX + colW, rowY, rowColX + colW, rowY + rowHeight);
           }
-        }
 
-        // Inner Vertical Column Line
-        if (!isLast && innerVertLineWidth > 0) {
+          rowColX += colW;
+        });
+
+        // Inner Horizontal Row Line (only between rows, never after the last row)
+        if (innerHorizLineWidth > 0 && rIdx < rowsToRenderCount - 1) {
           doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-          doc.setLineWidth(innerVertLineWidth);
-          doc.line(rowColX + colW, rowY, rowColX + colW, rowY + rowHeight);
+          doc.setLineWidth(innerHorizLineWidth);
+          doc.line(marginLeft, rowY + rowHeight, marginLeft + printableWidth, rowY + rowHeight);
         }
-
-        rowColX += colW;
-      });
-
-      // Inner Horizontal Row Line
-      if (innerHorizLineWidth > 0 && rIdx < totalRows - 1) {
-        doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-        doc.setLineWidth(innerHorizLineWidth);
-        doc.line(marginLeft, rowY + rowHeight, marginLeft + printableWidth, rowY + rowHeight);
       }
+
+      const tableHeight = rowsToRenderCount * rowHeight;
+      const tableTotalHeight = headerRowHeight + tableHeight;
+
+      // Outer Table Border Rect (wraps exactly rows 1 to N, never empty space)
+      if (outerLineWidth > 0) {
+        doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
+        doc.setLineWidth(outerLineWidth);
+        doc.rect(marginLeft, tableStartY, printableWidth, tableTotalHeight);
+      }
+
+      currentY = tableStartY + tableTotalHeight;
+    } else {
+      // Zero SKU records: omit table entirely to save ink and paper
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184); // slate-400
+      doc.text(
+        'No SKU records for this locator (table omitted to save ink and paper)',
+        marginLeft + printableWidth / 2,
+        tableStartY + 8,
+        { align: 'center' }
+      );
+      currentY = tableStartY + 12;
     }
-
-    const tableHeight = totalRows * rowHeight;
-    const tableTotalHeight = headerRowHeight + tableHeight;
-
-    // Outer Table Border Rect
-    if (outerLineWidth > 0) {
-      doc.setDrawColor(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b);
-      doc.setLineWidth(outerLineWidth);
-      doc.rect(marginLeft, tableStartY, printableWidth, tableTotalHeight);
-    }
-
-    currentY = tableStartY + tableTotalHeight;
 
     // ==========================================
     // 4. FOOTER SIGNATURE SECTION

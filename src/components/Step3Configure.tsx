@@ -543,7 +543,7 @@ export const Step3Configure: React.FC<Step3ConfigureProps> = ({
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-bold text-zinc-700 mb-1">
                   Barcode Symbology
@@ -561,7 +561,7 @@ export const Step3Configure: React.FC<Step3ConfigureProps> = ({
                   <option value="UPCA">UPC-A (Standard Retail)</option>
                 </select>
                 <p className="text-[11px] text-zinc-500 mt-1">
-                  Code 128 supports letters, numbers, and special symbols.
+                  Code 128 supports letters, numbers, and symbols.
                 </p>
               </div>
 
@@ -579,6 +579,29 @@ export const Step3Configure: React.FC<Step3ConfigureProps> = ({
                   }
                   className="w-full px-2.5 py-1.5 border border-zinc-300 rounded-md text-xs font-mono"
                 />
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  Vertical bar height (default: 14mm).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 mb-1 flex items-center justify-between">
+                  <span>Barcode Width (mm)</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1 rounded">New</span>
+                </label>
+                <input
+                  type="number"
+                  min="15"
+                  max="90"
+                  value={config.barcodeWidthMm ?? 42}
+                  onChange={(e) =>
+                    onUpdateConfig({ ...config, barcodeWidthMm: Math.max(15, Math.min(90, Number(e.target.value))) })
+                  }
+                  className="w-full px-2.5 py-1.5 border border-zinc-300 rounded-md text-xs font-mono"
+                />
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  Independent width (default: 42mm).
+                </p>
               </div>
             </div>
 

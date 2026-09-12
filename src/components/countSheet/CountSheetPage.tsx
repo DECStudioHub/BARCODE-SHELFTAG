@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { CountSheetColumnId, CountSheetConfig, CountSheetPageData, InventorySession } from '../../types';
 import { generateBarcodeSvgString, generateLocatorBarcodeSvgString } from '../../utils/barcode';
-import { getCountSheetPaperDimensions } from '../../utils/countSheetLayoutEngine';
+import { getCountSheetPaperDimensions, isValidCountSheetItem } from '../../utils/countSheetLayoutEngine';
 
 interface CountSheetPageProps {
   pageData: CountSheetPageData;
@@ -52,12 +52,10 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
     scale,
   ]);
 
-  // Compute number of rows to render
-  const totalRows = config.rowsPerPage || 15;
-  const items = pageData.items || [];
-  const emptyRowsCount = config.emptyRowsToFillPage !== false
-    ? Math.max(0, totalRows - items.length)
-    : 0;
+  // Filter only valid SKU records for rendering (Rows Per Page is strictly a maximum capacity)
+  const validItems = useMemo(() => {
+    return (pageData.items || []).filter(isValidCountSheetItem);
+  }, [pageData.items]);
 
   // Font family mapping
   const getFontFamily = (family: string) => {
@@ -262,15 +260,16 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
         </div>
       </div>
 
-      {/* 2. TABLE CONTAINER */}
+      {/* 2. TABLE CONTAINER — Ink-Saving Dynamic Table */}
       <div className="flex-1 w-full flex flex-col overflow-hidden">
-        <table
-          className="w-full border-collapse text-left"
-          style={{
-            border: outerBorderWidthPx > 0 ? `${outerBorderWidthPx}px ${tableBorderStyle} ${tableBorderColor}` : 'none',
-            fontFamily: bodyFont,
-          }}
-        >
+        {validItems.length > 0 ? (
+          <table
+            className="w-full border-collapse text-left"
+            style={{
+              border: outerBorderWidthPx > 0 ? `${outerBorderWidthPx}px ${tableBorderStyle} ${tableBorderColor}` : 'none',
+              fontFamily: bodyFont,
+            }}
+          >
           {/* Table Header: Dynamically ordered based on columnOrder */}
           <thead>
             <tr
@@ -365,10 +364,11 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
             </tr>
           </thead>
 
-          {/* Table Body: Exact item rows + empty rows to reach rowsPerPage */}
+          {/* Table Body: Exact valid item rows only, zero empty bordered rows */}
           <tbody>
-            {items.map((item, idx) => {
+            {validItems.map((item, idx) => {
               const rowNum = pageData.startIndex + idx + 1;
+              const isLastRow = idx === validItems.length - 1;
               const codeVal = String(item.barcode || item.upcNo || item.sku || '').trim();
 
               const barcodeSvg =
@@ -390,7 +390,7 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
                   style={{
                     height: `${config.rowHeightMm * scale}mm`,
                     maxHeight: `${config.rowHeightMm * scale}mm`,
-                    borderBottom: innerHorizontalBorder,
+                    borderBottom: isLastRow ? 'none' : innerHorizontalBorder,
                   }}
                 >
                   {/* Row Number */}
@@ -511,103 +511,18 @@ export const CountSheetPage: React.FC<CountSheetPageProps> = ({
                 </tr>
               );
             })}
-
-            {/* Extra Blank Rows to complete the exact rowsPerPage requirement */}
-            {Array.from({ length: emptyRowsCount }).map((_, emptyIdx) => {
-              const rowNum = items.length + emptyIdx + 1;
-              return (
-                <tr
-                  key={`empty-${emptyIdx}`}
-                  className="bg-white"
-                  style={{
-                    height: `${config.rowHeightMm * scale}mm`,
-                    maxHeight: `${config.rowHeightMm * scale}mm`,
-                    borderBottom: innerHorizontalBorder,
-                  }}
-                >
-                  {config.showRowNumbers && (
-                    <td
-                      className="px-1 text-center font-mono font-bold text-zinc-400 text-[9px]"
-                      style={{
-                        height: `${config.rowHeightMm * scale}mm`,
-                        borderRight: innerVerticalBorder,
-                      }}
-                    >
-                      {rowNum}
-                    </td>
-                  )}
-
-                  {activeColumns.map((colId, colIdx) => {
-                    const isLast = colIdx === activeColumns.length - 1;
-                    const rightBorder = isLast ? 'none' : innerVerticalBorder;
-
-                    if (colId === 'sku') {
-                      return (
-                        <td
-                          key={`empty-sku-${emptyIdx}`}
-                          className="px-2"
-                          style={{
-                            width: `${colWidths.skuMm * scale}mm`,
-                            height: `${config.rowHeightMm * scale}mm`,
-                            borderRight: rightBorder,
-                          }}
-                        />
-                      );
-                    }
-
-                    if (colId === 'barcode') {
-                      return (
-                        <td
-                          key={`empty-barcode-${emptyIdx}`}
-                          className="px-1"
-                          style={{
-                            width: `${colWidths.barcodeMm * scale}mm`,
-                            height: `${config.rowHeightMm * scale}mm`,
-                            borderRight: rightBorder,
-                          }}
-                        />
-                      );
-                    }
-
-                    if (colId === 'description') {
-                      return (
-                        <td
-                          key={`empty-desc-${emptyIdx}`}
-                          className="px-2"
-                          style={{
-                            width: `${colWidths.descMm * scale}mm`,
-                            height: `${config.rowHeightMm * scale}mm`,
-                            borderRight: rightBorder,
-                          }}
-                        />
-                      );
-                    }
-
-                    if (colId === 'count') {
-                      return (
-                        <td
-                          key={`empty-count-${emptyIdx}`}
-                          className="px-2 text-center"
-                          style={{
-                            width: `${colWidths.countMm * scale}mm`,
-                            height: `${config.rowHeightMm * scale}mm`,
-                            borderRight: rightBorder,
-                          }}
-                        >
-                          <div className="w-full h-full flex items-center justify-center pointer-events-none select-none">
-                            <span className="w-4/5 border-b border-zinc-200/80 inline-block h-2" />
-                          </div>
-                        </td>
-                      );
-                    }
-
-                    return null;
-                  })}
-                </tr>
-              );
-            })}
           </tbody>
         </table>
+        ) : (
+          <div className="flex-1 w-full flex flex-col items-center justify-center p-8 text-center select-none">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              No SKU Records For This Locator
+            </p>
+            <p className="text-[10px] text-zinc-400 mt-1">
+              Table omitted to save printer ink and paper
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 3. FOOTER SIGNATURE & VERIFICATION SECTION */}

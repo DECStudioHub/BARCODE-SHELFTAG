@@ -81,6 +81,7 @@ export interface LayoutConfig {
   countBoxGapTopMm?: number;
   countBoxFontSize?: number;
   countBoxBorderWidth?: number;
+  barcodeWidthMm?: number;
 }
 
 export interface InventorySession {

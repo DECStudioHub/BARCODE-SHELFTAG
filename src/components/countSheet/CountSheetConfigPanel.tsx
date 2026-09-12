@@ -742,20 +742,20 @@ export const CountSheetConfigPanel: React.FC<CountSheetConfigPanelProps> = ({
               </div>
             </div>
 
-            {/* Fill page with empty rows toggle */}
+            {/* Ink-Saving print mode indicator */}
             <div className="pt-2 border-t border-zinc-100 flex items-center justify-between">
               <div>
-                <span className="font-bold text-zinc-800">Pad Remaining Rows</span>
+                <span className="font-bold text-zinc-800 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  Eco Ink-Saving Printing
+                </span>
                 <p className="text-[10px] text-zinc-500">
-                  Fills up to {config.rowsPerPage} rows with blank lines for handwritten extras
+                  Rows Per Page ({config.rowsPerPage}) is maximum capacity; prints only existing SKU rows without empty borders
                 </p>
               </div>
-              <input
-                type="checkbox"
-                checked={config.emptyRowsToFillPage !== false}
-                onChange={e => handleUpdate('emptyRowsToFillPage', e.target.checked)}
-                className="w-4 h-4 accent-emerald-600 rounded"
-              />
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                ACTIVE
+              </span>
             </div>
           </div>
         )}

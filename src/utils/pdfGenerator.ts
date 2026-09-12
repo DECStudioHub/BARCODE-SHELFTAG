@@ -200,14 +200,18 @@ async function renderSingleTagToPdf(
     const cy = logoY + logoSize / 2;
     const r = logoSize / 2;
 
-    if (config.logoUrl && config.logoUrl.startsWith('data:image/')) {
+    let customRendered = false;
+    if (config.logoUrl && (config.logoUrl.startsWith('data:image/png') || config.logoUrl.startsWith('data:image/jpeg') || config.logoUrl.startsWith('data:image/jpg') || config.logoUrl.startsWith('data:image/webp'))) {
       try {
         const format = config.logoUrl.includes('png') ? 'PNG' : 'JPEG';
         doc.addImage(config.logoUrl, format, logoX, logoY, logoSize, logoSize);
+        customRendered = true;
       } catch {
-        // Fallback to Prince vector if custom image add fails
+        customRendered = false;
       }
-    } else {
+    }
+
+    if (!customRendered) {
       // 1. Draw Prince Yellow circular badge
       doc.setFillColor(254, 237, 1); // #FEED01
       doc.circle(cx, cy, r, 'F');
@@ -229,6 +233,12 @@ async function renderSingleTagToPdf(
       doc.setDrawColor(227, 27, 35);
       doc.setLineWidth(Math.max(0.2, r * 0.16));
       doc.line(cx - r * 0.78, cy + r * 0.56, cx + r * 0.78, cy + r * 0.56);
+
+      // 5. Draw blue 'RETAIL' text
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(Math.max(2.4, logoSize * 0.42));
+      doc.setTextColor(0, 85, 165); // #0055A5
+      doc.text('RETAIL', cx, cy + r * 0.84, { align: 'center' });
     }
 
     rightOffset = logoX - 2;
@@ -312,7 +322,8 @@ async function renderSingleTagToPdf(
   }
 
   // Render Barcode
-  const barcodeWidth = Math.max(20, Math.min(w - 8, 56));
+  const requestedBcWidth = Number(config.barcodeWidthMm) > 0 ? Number(config.barcodeWidthMm) : 42;
+  const barcodeWidth = Math.max(15, Math.min(w - 6, requestedBcWidth));
   const barcodeX = x + (w - barcodeWidth) / 2;
 
   if (barcodeDataUrl && barcodeActualHeight > 5) {

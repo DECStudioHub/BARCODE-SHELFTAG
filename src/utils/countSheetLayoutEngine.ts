@@ -112,7 +112,7 @@ export const DEFAULT_COUNT_SHEET_CONFIG: CountSheetConfig = {
   showSignatures: true,
   showStoreHeader: true,
   showPageNumbers: true,
-  emptyRowsToFillPage: true,
+  emptyRowsToFillPage: false,
 };
 
 export const DEFAULT_COUNT_SHEET_PRESETS: CountSheetPreset[] = [
@@ -222,6 +222,20 @@ export function getCountSheetPaperDimensions(
 }
 
 /**
+ * Data validation for Count Sheet items.
+ * Strictly validates that an item contains at least one non-empty SKU, UPC, barcode,
+ * or description to avoid phantom row generation from empty records.
+ */
+export function isValidCountSheetItem(item: InventoryItem | undefined | null): boolean {
+  if (!item) return false;
+  const sku = String(item.sku || '').trim();
+  const upc = String(item.upcNo || '').trim();
+  const barcode = String(item.barcode || '').trim();
+  const desc = String(item.description || '').trim();
+  return Boolean(sku || upc || barcode || desc);
+}
+
+/**
  * Group inventory items by locator
  */
 export function groupItemsByLocator(items: InventoryItem[]): Record<string, InventoryItem[]> {
@@ -232,7 +246,9 @@ export function groupItemsByLocator(items: InventoryItem[]): Record<string, Inve
     if (!groups[loc]) {
       groups[loc] = [];
     }
-    groups[loc].push(item);
+    if (isValidCountSheetItem(item)) {
+      groups[loc].push(item);
+    }
   });
 
   // Sort groups alphabetically by locator name, putting UNASSIGNED last if present
@@ -386,15 +402,18 @@ export function calculateCountSheetSummary(
   const locatorKeys = Object.keys(grouped);
 
   let totalPages = 0;
+  let totalValidItems = 0;
   const locatorCounts = locatorKeys.map(loc => {
-    const count = grouped[loc].length;
+    const locItems = grouped[loc] || [];
+    const count = locItems.length;
+    totalValidItems += count;
     const pages = Math.max(1, Math.ceil(count / Math.max(1, rowsPerPage)));
     totalPages += pages;
     return { locator: loc, count, pages };
   });
 
   return {
-    totalItems: selectedItems.length,
+    totalItems: totalValidItems,
     totalLocators: locatorKeys.length,
     rowsPerPage: Math.max(1, rowsPerPage),
     estimatedPages: totalPages,
